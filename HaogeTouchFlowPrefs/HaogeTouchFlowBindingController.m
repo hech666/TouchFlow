@@ -11,9 +11,12 @@
 @end
 @implementation HaogeTouchFlowBindingController
 - (instancetype)haoge_touchflow_initWithTrigger:(NSString *)trigger title:(NSString *)title {
-    if ((self = [super initWithStyle:UITableViewStyleInsetGrouped])) {
-        _haoge_touchflow_trigger = [trigger copy]; _haoge_touchflow_title = [title copy];
-    } return self;
+    HaogeTouchFlowBindingController *result = [super initWithStyle:UITableViewStyleInsetGrouped];
+    if (result) {
+        result.haoge_touchflow_trigger = [trigger copy];
+        result.haoge_touchflow_title = [title copy];
+    }
+    return result;
 }
 - (void)viewDidLoad { [super viewDidLoad]; self.title = self.haoge_touchflow_title; }
 - (void)viewWillAppear:(BOOL)animated {
