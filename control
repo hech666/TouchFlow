@@ -1,0 +1,10 @@
+Package: com.haoge.touchflow
+Name: 轻触手势
+Version: 5.2.0
+Architecture: iphoneos-arm
+Description: 为 iOS 16 提供状态栏、底部和桌面独立手势动作。
+Maintainer: haoge
+Author: haoge
+Section: Haoge-Tweaks
+Depends: mobilesubstrate, preferenceloader, firmware (>= 16.0)
+Conflicts: com.wkk.onestepx

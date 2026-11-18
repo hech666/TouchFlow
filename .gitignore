@@ -1,0 +1,3 @@
+.theos-ci
+packages/
+*.verification.json

@@ -1,0 +1,50 @@
+name: TouchFlow Roothide v1
+
+on:
+  push:
+    branches: [touchflow-v1]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    if: github.ref == 'refs/heads/touchflow-v1'
+    runs-on: macos-15-intel
+    timeout-minutes: 35
+    env:
+      THEOS: ${{ github.workspace }}/.theos-ci
+      THEOS_PACKAGE_SCHEME: roothide
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install tools
+        run: |
+          xcode-select -p
+          brew install dpkg ldid
+      - name: Fetch Theos and iOS16 SDK
+        run: |
+          git clone --depth 1 --recurse-submodules --shallow-submodules https://github.com/roothide/theos.git "$THEOS"
+          git clone --depth 1 --filter=blob:none --sparse https://github.com/theos/sdks.git "$RUNNER_TEMP/theos-sdks"
+          git -C "$RUNNER_TEMP/theos-sdks" sparse-checkout set iPhoneOS16.5.sdk
+          cp -a "$RUNNER_TEMP/theos-sdks/iPhoneOS16.5.sdk" "$THEOS/sdks/"
+      - name: Geometry checks
+        run: |
+          clang -std=c11 -Wall -Wextra -Werror Tests/geometry.c -o "$RUNNER_TEMP/geometry"
+          "$RUNNER_TEMP/geometry"
+      - name: Build complete tweak and preferences
+        run: |
+          VERSION="5.2.0-${{ github.run_number }}"
+          sed -i '' "s/^Version: .*/Version: ${VERSION}/" control
+          sh build.sh roothide
+          python3 Tools/verify_package.py packages/*.deb
+          python3 Tools/source_manifest.py
+      - name: Upload packages and provenance
+        uses: actions/upload-artifact@v4
+        with:
+          name: touchflow-roothide-${{ github.run_number }}
+          path: |
+            packages/*.deb
+            packages/*.json
+          if-no-files-found: error
+          retention-days: 30
