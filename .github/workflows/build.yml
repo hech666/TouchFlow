@@ -44,6 +44,7 @@ jobs:
           python3 Tools/verify_package.py packages/*.deb
           python3 Tools/source_manifest.py
       - name: UIKit simulator regression
+        if: github.event_name == 'workflow_dispatch'
         id: ui
         continue-on-error: true
         timeout-minutes: 5

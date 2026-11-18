@@ -186,7 +186,13 @@ static BOOL haoge_touchflow_locked(void) {
     id haptics = [self haoge_touchflow_snapshot][@"haptics"];
     if (!haptics || ([haptics isKindOfClass:[NSNumber class]] && [haptics boolValue])) [self.haoge_touchflow_feedback impactOccurred];
     if (haoge_touchflow_hasPanelMode(binding)) {
-        [[HaogeTouchFlowPanel haoge_touchflow_shared] haoge_touchflow_showBinding:binding trigger:trigger scene:view.window.windowScene sourceWindow:view.window];
+        __weak UIWindow *sourceWindow = view.window;
+        dispatch_async(dispatch_get_main_queue(), ^{
+            NSDictionary *current = haoge_touchflow_binding([self haoge_touchflow_snapshot], trigger);
+            if (!haoge_touchflow_hasPanelMode(current) || ![self haoge_touchflow_enabledTrigger:trigger]) return;
+            UIWindow *window = sourceWindow;
+            [[HaogeTouchFlowPanel haoge_touchflow_shared] haoge_touchflow_showBinding:current trigger:trigger scene:window.windowScene sourceWindow:window];
+        });
     } else haoge_touchflow_executeBinding(binding);
 }
 - (void)haoge_touchflow_start {

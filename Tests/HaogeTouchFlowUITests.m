@@ -52,9 +52,14 @@ void haoge_touchflow_executeBinding(NSDictionary *binding) {
         Class bindingClass=NSClassFromString(@"HaogeTouchFlowBindingController");SEL factory=NSSelectorFromString(@"haoge_touchflow_controllerWithTrigger:title:");
         UITableViewController *editor=((id (*)(id,SEL,id,id))objc_msgSend)(bindingClass,factory,@"statusLeftTap",@"状态栏左侧单击");
         [editor loadViewIfNeeded];[editor viewWillAppear:NO];
+        NSIndexPath *panelRow = [NSIndexPath indexPathForRow:1 inSection:1];
+        [editor tableView:editor.tableView didSelectRowAtIndexPath:panelRow];
+        UITableViewCell *panelCell = [editor tableView:editor.tableView cellForRowAtIndexPath:panelRow];
+        [self haoge_touchflow_testCheck:panelCell.accessoryType == UITableViewCellAccessoryCheckmark message:@"panel is selected in action list"];
         NSArray *catalog=haoge_touchflow_actionCatalog();
         for (NSUInteger i=0;i<catalog.count;i++) {
-            UITableViewCell *cell=[editor tableView:editor.tableView cellForRowAtIndexPath:[NSIndexPath indexPathForRow:(NSInteger)i+1 inSection:1]];
+            UITableViewCell *cell=[editor tableView:editor.tableView cellForRowAtIndexPath:[NSIndexPath indexPathForRow:(NSInteger)i+2 inSection:1]];
+            [self haoge_touchflow_testCheck:cell.accessoryType != UITableViewCellAccessoryCheckmark message:@"direct actions unchecked when panel is selected"];
             [self haoge_touchflow_testCheck:[cell.textLabel.text isEqual:catalog[i][@"title"]] message:@"action row text must match click mapping"];
         }
         NSDictionary *item=@{@"id":@"test-item",@"action":@"controlCenter",@"value":@"",@"title":@"控制中心",@"symbol":@"switch.2"};
