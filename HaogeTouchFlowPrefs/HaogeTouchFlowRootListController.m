@@ -10,8 +10,15 @@
 @property (nonatomic, copy) NSDictionary *haoge_touchflow_values;
 @end
 @implementation HaogeTouchFlowRootListController
-- (NSArray *)specifiers { return @[]; }
-- (void)viewDidLoad { [super viewDidLoad]; self.title = @"轻触手势"; }
+- (UITableViewStyle)tableViewStyle { return UITableViewStyleInsetGrouped; }
+- (NSArray *)specifiers {
+    if (!_specifiers) _specifiers = [self loadSpecifiersFromPlistName:@"HaogeTouchFlowRoot" target:self];
+    return _specifiers;
+}
+- (void)viewDidLoad {
+    [super viewDidLoad]; self.title = @"轻触手势";
+    self.tableView.dataSource = self; self.tableView.delegate = self; [self.tableView reloadData];
+}
 - (void)viewWillAppear:(BOOL)animated {
     [super viewWillAppear:animated]; self.haoge_touchflow_values = haoge_touchflow_readPreferences(); [self.tableView reloadData];
 }

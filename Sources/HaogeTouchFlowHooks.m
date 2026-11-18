@@ -68,9 +68,9 @@ static BOOL haoge_touchflow_hook(NSString *className,NSString *name,IMP replacem
     if (fluid) {
         // Decline an ABI changed by another OS. Struct/float encodings are not interchangeable.
         if (method_getNumberOfArguments(method) != 6) return NO;
-        char t[32] = {0}; method_getArgumentType(method,3,t,sizeof(t)); if (t[0] != 'd') return NO;
-        method_getArgumentType(method,4,t,sizeof(t)); if (t[0] != 'd') return NO;
-        method_getArgumentType(method,5,t,sizeof(t)); if (t[0] != '@') return NO;
+        const char *type = method_getArgumentType(method,3); if (!type || type[0] != 'd') return NO;
+        type = method_getArgumentType(method,4); if (!type || type[0] != 'd') return NO;
+        type = method_getArgumentType(method,5); if (!type || type[0] != '@') return NO;
     }
     MSHookMessageEx(cls,selector,replacement,original); return YES;
 }
@@ -89,10 +89,9 @@ void haoge_touchflow_installHooks(void) {
         for (NSString *name in names) {
             Method method = manager ? class_getInstanceMethod(manager,NSSelectorFromString(name)) : NULL;
             if (!method || method_getNumberOfArguments(method)!=6) { complete = NO; break; }
-            char type[32]={0};
-            method_getArgumentType(method,3,type,sizeof(type)); if (type[0]!='d') complete=NO;
-            method_getArgumentType(method,4,type,sizeof(type)); if (type[0]!='d') complete=NO;
-            method_getArgumentType(method,5,type,sizeof(type)); if (type[0]!='@') complete=NO;
+            const char *type = method_getArgumentType(method,3); if (!type || type[0]!='d') complete=NO;
+            type = method_getArgumentType(method,4); if (!type || type[0]!='d') complete=NO;
+            type = method_getArgumentType(method,5); if (!type || type[0]!='@') complete=NO;
         }
         // Intercept an entire lifecycle or none; never suppress began without a matching end hook.
         if (complete) {

@@ -268,8 +268,12 @@ static BOOL haoge_touchflow_locked(void) {
     UIView *view = gesture.view;
     if ([gesture isKindOfClass:[HaogeTouchFlowBindingRecognizer class]]) {
         HaogeTouchFlowBindingRecognizer *bindingRecognizer = (id)gesture;
-        if ([bindingRecognizer.haoge_touchflow_region isEqual:@"bottom"])
+        if ([bindingRecognizer.haoge_touchflow_region isEqual:@"bottom"]) {
+            // Unlocked bottom gestures are arbitrated by SBFluidSwitcher hooks;
+            // the window recognizer is reserved for the lock-screen path.
+            if (!haoge_touchflow_locked()) return NO;
             return [self haoge_touchflow_bottomTriggerForPoint:[touch locationInView:view] view:view] != nil;
+        }
         NSString *prefix = [self haoge_touchflow_statusPrefixForPoint:[touch locationInView:view] view:view];
         if (!prefix) return NO;
         for (NSString *suffix in @[@"LongPress",@"SwipeLeft",@"SwipeRight"])
