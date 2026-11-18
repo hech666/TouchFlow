@@ -28,7 +28,7 @@ static UIWindowScene *haoge_touchflow_activeApplicationScene(UIWindow *sourceWin
         if ([windowScene.session.persistentIdentifier isEqual:@"com.apple.springboard"]) return windowScene;
         for (UIWindow *window in windowScene.windows) {
             if (!window.isKeyWindow) continue;
-            if ([windowScene.session.role hasSuffix:@"Application"] || [windowScene.session.role isEqual:UISceneSessionRoleApplication]) return windowScene;
+            if ([windowScene.session.role hasSuffix:@"Application"] || [windowScene.session.role isEqual:UIWindowSceneSessionRoleApplication]) return windowScene;
         }
     }
     // Finally accept the active application role for OS versions whose session identifier differs.
@@ -36,7 +36,7 @@ static UIWindowScene *haoge_touchflow_activeApplicationScene(UIWindow *sourceWin
         if (![candidate isKindOfClass:[UIWindowScene class]]) continue;
         UIWindowScene *windowScene=(UIWindowScene *)candidate;
         if (windowScene.activationState==UISceneActivationStateForegroundActive &&
-            ([windowScene.session.role hasSuffix:@"Application"] || [windowScene.session.role isEqual:UISceneSessionRoleApplication])) return windowScene;
+            ([windowScene.session.role hasSuffix:@"Application"] || [windowScene.session.role isEqual:UIWindowSceneSessionRoleApplication])) return windowScene;
     }
     return nil;
 }
