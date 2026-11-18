@@ -89,9 +89,10 @@ void haoge_touchflow_installHooks(void) {
         for (NSString *name in names) {
             Method method = manager ? class_getInstanceMethod(manager,NSSelectorFromString(name)) : NULL;
             if (!method || method_getNumberOfArguments(method)!=6) { complete = NO; break; }
-            const char *type = method_getArgumentType(method,3); if (!type || type[0]!='d') complete=NO;
-            type = method_getArgumentType(method,4); if (!type || type[0]!='d') complete=NO;
-            type = method_getArgumentType(method,5); if (!type || type[0]!='@') complete=NO;
+            char type[32] = {0};
+            method_getArgumentType(method,3,type,sizeof(type)); if (type[0]!='d') complete=NO;
+            method_getArgumentType(method,4,type,sizeof(type)); if (type[0]!='d') complete=NO;
+            method_getArgumentType(method,5,type,sizeof(type)); if (type[0]!='@') complete=NO;
         }
         // Intercept an entire lifecycle or none; never suppress began without a matching end hook.
         if (complete) {
