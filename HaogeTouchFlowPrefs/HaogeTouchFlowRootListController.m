@@ -105,7 +105,6 @@
 - (NSArray *)specifiers { return @[]; }
 - (void)viewDidLoad {
     [super viewDidLoad]; self.title = @"轻触手势";
-    self.tableView.scrollEnabled = NO;
     self.haoge_touchflow_content = [HaogeTouchFlowSettingsController new];
     [self addChildViewController:self.haoge_touchflow_content];
     UIView *contentView = self.haoge_touchflow_content.view;
