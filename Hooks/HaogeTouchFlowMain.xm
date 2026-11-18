@@ -1,7 +1,13 @@
 #import <UIKit/UIKit.h>
 #import "HaogeTouchFlowGestures.h"
 #import "HaogeTouchFlowConfig.h"
-extern void haoge_touchflow_installHooks(void);
+#ifdef __cplusplus
+extern "C" {
+#endif
+void haoge_touchflow_installHooks(void);
+#ifdef __cplusplus
+}
+#endif
 
 %hook SpringBoard
 - (void)applicationDidFinishLaunching:(id)application {
