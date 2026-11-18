@@ -79,10 +79,11 @@ void haoge_touchflow_executeBinding(NSDictionary *binding) {
         HaogeTouchFlowPanel *panel=[HaogeTouchFlowPanel haoge_touchflow_shared];UIWindowScene *scene=nil;
         for (UIScene *candidate in UIApplication.sharedApplication.connectedScenes) if ([candidate isKindOfClass:UIWindowScene.class] && candidate.activationState==UISceneActivationStateForegroundActive) {scene=(id)candidate;break;}
         [self haoge_touchflow_testCheck:scene!=nil message:@"foreground scene available"];
-        [panel haoge_touchflow_showBinding:self.binding trigger:@"statusLeftTap" scene:scene];
-        [self haoge_touchflow_testCheck:[panel haoge_touchflow_isVisible] message:@"panel visible"];
+        [panel haoge_touchflow_showBinding:self.binding trigger:@"statusLeftTap" scene:nil sourceWindow:nil];
+        [self haoge_touchflow_testCheck:[panel haoge_touchflow_isVisible] message:@"panel visible via key-window scene fallback"];
         UIWindow *overlay=[panel valueForKey:@"haoge_touchflow_window"];
-        [self haoge_touchflow_testCheck:!overlay.isKeyWindow message:@"panel must not become key window"];
+        [self.haoge_touchflow_testCheck:![overlay isKeyWindow] message:@"panel must not become key window"];
+        [self haoge_touchflow_testCheck:overlay.windowLevel==10000011.0 message:@"panel window above SpringBoard status layer"];
         UIViewController *controller=overlay.rootViewController;[controller.view layoutIfNeeded];
         NSArray *buttons=[controller valueForKey:@"haoge_touchflow_buttons"];
         [self haoge_touchflow_testCheck:buttons.count==1 message:@"one configured action creates one button"];
@@ -93,7 +94,7 @@ void haoge_touchflow_executeBinding(NSDictionary *binding) {
             @try {
                 [self haoge_touchflow_testCheck:![panel haoge_touchflow_isVisible] message:@"selection cleans window"];
                 [self haoge_touchflow_testCheck:haoge_touchflow_testExecuted==1 message:@"double selection executes once"];
-                [panel haoge_touchflow_showBinding:self.binding trigger:@"statusLeftTap" scene:scene];
+                [panel haoge_touchflow_showBinding:self.binding trigger:@"statusLeftTap" scene:nil sourceWindow:nil];
                 [self haoge_touchflow_testCheck:[panel haoge_touchflow_isVisible] message:@"panel can reopen"];
                 [panel haoge_touchflow_dismiss];[panel haoge_touchflow_dismiss];
                 dispatch_after(dispatch_time(DISPATCH_TIME_NOW,NSEC_PER_SEC),dispatch_get_main_queue(), ^{

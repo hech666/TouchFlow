@@ -16,6 +16,30 @@ static BOOL haoge_touchflow_panelLocked(void) {
     }
     return YES;
 }
+static UIWindowScene *haoge_touchflow_activeApplicationScene(UIWindow *sourceWindow) {
+    UIWindowScene *scene=sourceWindow.windowScene;
+    if ([scene isKindOfClass:[UIWindowScene class]] && scene.activationState==UISceneActivationStateForegroundActive) return scene;
+    NSSet<UIScene *> *scenes=UIApplication.sharedApplication.connectedScenes;
+    // Prefer the SpringBoard application scene identified by the original binary.
+    for (UIScene *candidate in scenes) {
+        if (![candidate isKindOfClass:[UIWindowScene class]]) continue;
+        UIWindowScene *windowScene=(UIWindowScene *)candidate;
+        if (windowScene.activationState!=UISceneActivationStateForegroundActive) continue;
+        if ([windowScene.session.persistentIdentifier isEqual:@"com.apple.springboard"]) return windowScene;
+        for (UIWindow *window in windowScene.windows) {
+            if (!window.isKeyWindow) continue;
+            if ([windowScene.session.role hasSuffix:@"Application"] || [windowScene.session.role isEqual:UISceneSessionRoleApplication]) return windowScene;
+        }
+    }
+    // Finally accept the active application role for OS versions whose session identifier differs.
+    for (UIScene *candidate in scenes) {
+        if (![candidate isKindOfClass:[UIWindowScene class]]) continue;
+        UIWindowScene *windowScene=(UIWindowScene *)candidate;
+        if (windowScene.activationState==UISceneActivationStateForegroundActive &&
+            ([windowScene.session.role hasSuffix:@"Application"] || [windowScene.session.role isEqual:UISceneSessionRoleApplication])) return windowScene;
+    }
+    return nil;
+}
 @interface HaogeTouchFlowPanelWindow : UIWindow
 @end
 @implementation HaogeTouchFlowPanelWindow
@@ -185,12 +209,13 @@ static void haoge_touchflow_panelLockChanged(CFNotificationCenterRef center,void
     [self haoge_touchflow_dismiss];
 }
 - (BOOL)haoge_touchflow_isVisible { return self.haoge_touchflow_window!=nil; }
-- (void)haoge_touchflow_showBinding:(NSDictionary *)binding trigger:(NSString *)trigger scene:(UIWindowScene *)scene {
+- (void)haoge_touchflow_showBinding:(NSDictionary *)binding trigger:(NSString *)trigger scene:(UIWindowScene *)scene sourceWindow:(UIWindow *)sourceWindow {
     NSAssert(NSThread.isMainThread,@"Panel UI must run on main");
     if (self.haoge_touchflow_dismissing) return;
     if (self.haoge_touchflow_window) { [self haoge_touchflow_dismiss];return; }
     HaogeTouchFlowConfig *config=[HaogeTouchFlowConfig haoge_touchflow_shared];
     if (![config haoge_touchflow_isEnabled] || haoge_touchflow_panelLocked()) return;
+    scene=haoge_touchflow_activeApplicationScene(sourceWindow);
     if (!scene || scene.activationState!=UISceneActivationStateForegroundActive ||
         !haoge_touchflow_hasPanelMode(binding) || !haoge_touchflow_bindingEnabled(binding)) return;
     NSArray *items=haoge_touchflow_panelItems(binding[@"panelItems"]);if (!items.count) return;
@@ -203,9 +228,16 @@ static void haoge_touchflow_panelLockChanged(CFNotificationCenterRef center,void
     __weak typeof(self) weakSelf=self;
     controller.haoge_touchflow_close=^{[weakSelf haoge_touchflow_dismiss];};
     controller.haoge_touchflow_selection=^(NSDictionary *item) { [weakSelf haoge_touchflow_select:item]; };
+    UIWindow *anchor=sourceWindow;
+    if (!anchor || anchor.windowScene!=scene) {
+        for (UIWindow *candidate in scene.windows) if (candidate.isKeyWindow) { anchor=candidate;break; }
+    }
     HaogeTouchFlowPanelWindow *window=[[HaogeTouchFlowPanelWindow alloc] initWithWindowScene:scene];
-    window.frame=scene.coordinateSpace.bounds;window.windowLevel=UIWindowLevelStatusBar+1;
+    window.frame=scene.coordinateSpace.bounds;
+    // OneStepX's recovered controller uses level 10000011; remain above SB but never become key.
+    window.windowLevel=10000011.0;
     window.backgroundColor=UIColor.clearColor;window.rootViewController=controller;
+    if (anchor && anchor.windowScene==scene) window.windowScene=anchor.windowScene;
     self.haoge_touchflow_window=window;self.haoge_touchflow_controller=controller;
     window.hidden=NO; // Never makeKeyWindow: avoid displacing SpringBoard's keyboard/key state.
     [controller haoge_touchflow_animateIn];
