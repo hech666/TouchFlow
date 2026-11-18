@@ -43,6 +43,15 @@ jobs:
           sh build.sh roothide
           python3 Tools/verify_package.py packages/*.deb
           python3 Tools/source_manifest.py
+      - name: UIKit simulator regression
+        id: ui
+        continue-on-error: true
+        timeout-minutes: 5
+        run: python3 Tools/run_ui_tests.py
+      - name: Record simulator status
+        env:
+          UI_OUTCOME: ${{ steps.ui.outcome }}
+        run: python3 -c 'import json,os; from pathlib import Path; Path("packages/ui_status.json").write_text(json.dumps({"outcome":os.environ["UI_OUTCOME"]}))'
       - name: Upload packages and provenance
         uses: actions/upload-artifact@v4
         with:

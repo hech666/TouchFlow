@@ -9,6 +9,7 @@
 
 static void haoge_touchflow_preferencesDidChange(CFNotificationCenterRef center, void *observer,
                                           CFStringRef name, const void *object, CFDictionaryRef info) {
+    (void)center; (void)name; (void)object; (void)info;
     HaogeTouchFlowConfig *config = (__bridge HaogeTouchFlowConfig *)observer;
     dispatch_async(config.reloadQueue, ^{
         [config haoge_touchflow_reload];

@@ -152,10 +152,13 @@ static BOOL haoge_touchflow_panelLocked(void) {
 @property (nonatomic, assign) BOOL haoge_touchflow_dismissing;
 @property (nonatomic, assign) NSUInteger haoge_touchflow_generation;
 @property (nonatomic, assign) BOOL haoge_touchflow_cancelledAction;
+- (void)haoge_touchflow_cancelForNotification:(NSNotification *)note;
 @end
 static void haoge_touchflow_panelLockChanged(CFNotificationCenterRef center,void *observer,CFStringRef name,const void *object,CFDictionaryRef info) {
     (void)center;(void)name;(void)object;(void)info;
-    dispatch_async(dispatch_get_main_queue(), ^{ [(__bridge HaogeTouchFlowPanel *)observer haoge_touchflow_dismiss]; });
+    dispatch_async(dispatch_get_main_queue(), ^{
+        [(__bridge HaogeTouchFlowPanel *)observer haoge_touchflow_cancelForNotification:nil];
+    });
 }
 @implementation HaogeTouchFlowPanel
 + (instancetype)haoge_touchflow_shared {
