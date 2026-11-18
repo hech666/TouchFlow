@@ -17,9 +17,20 @@ static BOOL haoge_touchflow_panelLocked(void) {
     return YES;
 }
 static UIWindowScene *haoge_touchflow_activeApplicationScene(UIWindow *sourceWindow) {
-    UIWindowScene *scene=sourceWindow.windowScene;
-    if ([scene isKindOfClass:[UIWindowScene class]] && scene.activationState==UISceneActivationStateForegroundActive) return scene;
-    NSSet<UIScene *> *scenes=UIApplication.sharedApplication.connectedScenes;
+    UIWindowScene *scene=[sourceWindow isKindOfClass:[UIWindow class]]?sourceWindow.windowScene:nil;
+    if (scene.activationState==UISceneActivationStateForegroundActive) return scene;
+    UIApplication *application=UIApplication.sharedApplication;
+    // The original tweak first anchored to SpringBoard's key window, then searched connected scenes.
+    SEL windowsSelector=NSSelectorFromString(@"windows");
+    NSArray *windows=[application respondsToSelector:windowsSelector]?((id (*)(id,SEL))objc_msgSend)(application,windowsSelector):nil;
+    for (UIWindow *window in windows) {
+        SEL keySelector=NSSelectorFromString(@"isKeyWindow");
+        BOOL key=[window respondsToSelector:keySelector]?((BOOL (*)(id,SEL))objc_msgSend)(window,keySelector):NO;
+        if (!key) continue;
+        UIWindowScene *keyScene=window.windowScene;
+        if (keyScene.activationState==UISceneActivationStateForegroundActive) return keyScene;
+    }
+    NSSet<UIScene *> *scenes=application.connectedScenes;
     // Prefer the SpringBoard application scene identified by the original binary.
     for (UIScene *candidate in scenes) {
         if (![candidate isKindOfClass:[UIWindowScene class]]) continue;
