@@ -198,6 +198,7 @@ static Class haoge_touchflow_panelWindowClass(void) {
 }
 - (void)viewDidAppear:(BOOL)animated {
     [super viewDidAppear:animated];
+    NSLog(@"[TouchFlowPanel] controller appeared window=%@ hidden=%d frame=%@",self.view.window,self.view.window.hidden,NSStringFromCGRect(self.view.frame));
     [self haoge_touchflow_animateIn];
 }
 - (void)haoge_touchflow_animateIn {
@@ -266,17 +267,26 @@ static void haoge_touchflow_panelLockChanged(CFNotificationCenterRef center,void
 - (BOOL)haoge_touchflow_isVisible { return self.haoge_touchflow_window!=nil; }
 - (void)haoge_touchflow_showBinding:(NSDictionary *)binding trigger:(NSString *)trigger scene:(UIWindowScene *)scene sourceWindow:(UIWindow *)sourceWindow {
     NSAssert(NSThread.isMainThread,@"Panel UI must run on main");
-    if (self.haoge_touchflow_dismissing) return;
-    if (self.haoge_touchflow_window) { [self haoge_touchflow_dismiss];return; }
+    NSDictionary *snapshot=[[HaogeTouchFlowConfig haoge_touchflow_shared] haoge_touchflow_snapshot];
+    NSDictionary *currentBinding=haoge_touchflow_binding(snapshot,trigger);
+    NSLog(@"[TouchFlowPanel] request trigger=%@ enabled=%d mode=%@ count=%lu source=%@ sourceScene=%@ sourceRole=%@ sourceState=%ld",
+        trigger,[[snapshot objectForKey:@"enabled"] boolValue],currentBinding[@"mode"],
+        (unsigned long)haoge_touchflow_panelItems(currentBinding[@"panelItems"]).count,
+        NSStringFromClass(sourceWindow.class),sourceWindow.windowScene.session.persistentIdentifier,
+        sourceWindow.windowScene.session.role,(long)sourceWindow.windowScene.activationState);
+    if (self.haoge_touchflow_dismissing) { NSLog(@"[TouchFlowPanel] drop: dismissing"); return; }
+    if (self.haoge_touchflow_window) { NSLog(@"[TouchFlowPanel] close previous window"); [self haoge_touchflow_dismiss];return; }
     HaogeTouchFlowConfig *config=[HaogeTouchFlowConfig haoge_touchflow_shared];
-    if (![config haoge_touchflow_isEnabled] || haoge_touchflow_panelLocked()) return;
-    if (!haoge_touchflow_hasPanelMode(binding) || !haoge_touchflow_bindingEnabled(binding)) return;
+    if (![config haoge_touchflow_isEnabled]) { NSLog(@"[TouchFlowPanel] drop: global disabled"); return; }
+    if (haoge_touchflow_panelLocked()) { NSLog(@"[TouchFlowPanel] drop: device locked"); return; }
+    if (!haoge_touchflow_hasPanelMode(currentBinding)) { NSLog(@"[TouchFlowPanel] drop: mode=%@",currentBinding[@"mode"]); return; }
+    if (!haoge_touchflow_bindingEnabled(currentBinding)) { NSLog(@"[TouchFlowPanel] drop: binding disabled or empty"); return; }
     scene = haoge_touchflow_applicationScene(scene, sourceWindow);
-    if (!scene) {
-        NSLog(@"[TouchFlow] No application window scene for panel trigger %@", trigger);
-        return;
-    }
-    NSArray *items=haoge_touchflow_panelItems(binding[@"panelItems"]);if (!items.count) return;
+    if (!scene) { NSLog(@"[TouchFlowPanel] drop: no app scene"); return; }
+    NSArray *items=haoge_touchflow_panelItems(currentBinding[@"panelItems"]);
+    if (!items.count) { NSLog(@"[TouchFlowPanel] drop: no valid panel items"); return; }
+    NSLog(@"[TouchFlowPanel] accepted scene=%@ role=%@ state=%ld level=%f",
+        scene.session.persistentIdentifier,scene.session.role,(long)scene.activationState,10000011.0);
     self.haoge_touchflow_generation++;self.haoge_touchflow_trigger=[trigger copy];
     self.haoge_touchflow_cancelledAction=NO;
     NSUInteger index=[haoge_touchflow_triggerIDs() indexOfObject:trigger];
@@ -288,6 +298,7 @@ static void haoge_touchflow_panelLockChanged(CFNotificationCenterRef center,void
     controller.haoge_touchflow_selection=^(NSDictionary *item) { [weakSelf haoge_touchflow_select:item]; };
     Class windowClass = haoge_touchflow_panelWindowClass();
     UIWindow *window = [[windowClass alloc] initWithWindowScene:scene];
+    NSLog(@"[TouchFlowPanel] windowClass=%@ window=%@ scene=%@ bounds=%@",NSStringFromClass(windowClass),window,scene,NSStringFromCGRect(scene.coordinateSpace.bounds));
     if (!window && windowClass != HaogeTouchFlowPanelWindow.class) {
         window = [[HaogeTouchFlowPanelWindow alloc] initWithWindowScene:scene];
     }
@@ -308,6 +319,7 @@ static void haoge_touchflow_panelLockChanged(CFNotificationCenterRef center,void
     // Some SpringBoard scenes deliver appearance callbacks a run-loop turn later.
     dispatch_async(dispatch_get_main_queue(), ^{
         if (self.haoge_touchflow_window != window || self.haoge_touchflow_dismissing) return;
+        NSLog(@"[TouchFlowPanel] presented window=%@ hidden=%d frame=%@",window,window.hidden,NSStringFromCGRect(window.frame));
         [controller haoge_touchflow_animateIn];
         UIAccessibilityPostNotification(UIAccessibilityScreenChangedNotification, controller.haoge_touchflow_heading);
     });
