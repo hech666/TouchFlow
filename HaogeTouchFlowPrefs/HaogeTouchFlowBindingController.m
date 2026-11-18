@@ -7,11 +7,11 @@
 @property (nonatomic, copy) NSString *haoge_touchflow_trigger;
 @property (nonatomic, copy) NSString *haoge_touchflow_title;
 @property (nonatomic, copy) NSDictionary *haoge_touchflow_binding;
-- (instancetype)haoge_touchflow_initWithTrigger:(NSString *)trigger title:(NSString *)title;
++ (instancetype)haoge_touchflow_controllerWithTrigger:(NSString *)trigger title:(NSString *)title;
 @end
 @implementation HaogeTouchFlowBindingController
-- (instancetype)haoge_touchflow_initWithTrigger:(NSString *)trigger title:(NSString *)title {
-    HaogeTouchFlowBindingController *result = [super initWithStyle:UITableViewStyleInsetGrouped];
++ (instancetype)haoge_touchflow_controllerWithTrigger:(NSString *)trigger title:(NSString *)title {
+    HaogeTouchFlowBindingController *result = [[self alloc] initWithStyle:UITableViewStyleInsetGrouped];
     if (result) {
         result.haoge_touchflow_trigger = [trigger copy];
         result.haoge_touchflow_title = [title copy];

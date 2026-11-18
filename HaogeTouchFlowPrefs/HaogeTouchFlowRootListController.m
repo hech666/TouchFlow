@@ -4,21 +4,14 @@
 #import "HaogeTouchFlowActions.h"
 #import "HaogeTouchFlowGeometry.h"
 @interface HaogeTouchFlowBindingController : UITableViewController
-- (instancetype)haoge_touchflow_initWithTrigger:(NSString *)trigger title:(NSString *)title;
++ (instancetype)haoge_touchflow_controllerWithTrigger:(NSString *)trigger title:(NSString *)title;
 @end
-@interface HaogeTouchFlowRootListController ()
+@interface HaogeTouchFlowSettingsController : UITableViewController
 @property (nonatomic, copy) NSDictionary *haoge_touchflow_values;
 @end
-@implementation HaogeTouchFlowRootListController
-- (UITableViewStyle)tableViewStyle { return UITableViewStyleInsetGrouped; }
-- (NSArray *)specifiers {
-    if (!_specifiers) _specifiers = [self loadSpecifiersFromPlistName:@"HaogeTouchFlowRoot" target:self];
-    return _specifiers;
-}
-- (void)viewDidLoad {
-    [super viewDidLoad]; self.title = @"轻触手势";
-    self.tableView.dataSource = self; self.tableView.delegate = self; [self.tableView reloadData];
-}
+@implementation HaogeTouchFlowSettingsController
+- (instancetype)init { return [super initWithStyle:UITableViewStyleInsetGrouped]; }
+- (void)viewDidLoad { [super viewDidLoad]; self.title = @"轻触手势"; }
 - (void)viewWillAppear:(BOOL)animated {
     [super viewWillAppear:animated]; self.haoge_touchflow_values = haoge_touchflow_readPreferences(); [self.tableView reloadData];
 }
@@ -78,7 +71,7 @@
     [tableView deselectRowAtIndexPath:path animated:YES];
     if (path.section>=1 && path.section<=3) {
         NSInteger index=path.section==1?path.row:(path.section==2?path.row+5:path.row+10);
-        HaogeTouchFlowBindingController *editor=[[HaogeTouchFlowBindingController alloc] haoge_touchflow_initWithTrigger:haoge_touchflow_triggerIDs()[(NSUInteger)index] title:haoge_touchflow_triggerTitles()[(NSUInteger)index]];
+        HaogeTouchFlowBindingController *editor=[HaogeTouchFlowBindingController haoge_touchflow_controllerWithTrigger:haoge_touchflow_triggerIDs()[(NSUInteger)index] title:haoge_touchflow_triggerTitles()[(NSUInteger)index]];
         [self.navigationController pushViewController:editor animated:YES]; return;
     }
     if (path.section!=5) return;
@@ -100,5 +93,25 @@
         });
     }]];
     [self presentViewController:alert animated:YES completion:nil];
+}
+@end
+
+// PreferenceLoader hosts a PSListController; the content is an ordinary UIKit table.
+// This keeps Preferences' private specifier index machinery out of custom action rows.
+@interface HaogeTouchFlowRootListController ()
+@property (nonatomic, strong) HaogeTouchFlowSettingsController *haoge_touchflow_content;
+@end
+@implementation HaogeTouchFlowRootListController
+- (NSArray *)specifiers { return @[]; }
+- (void)viewDidLoad {
+    [super viewDidLoad]; self.title = @"轻触手势";
+    self.tableView.scrollEnabled = NO;
+    self.haoge_touchflow_content = [HaogeTouchFlowSettingsController new];
+    [self addChildViewController:self.haoge_touchflow_content];
+    UIView *contentView = self.haoge_touchflow_content.view;
+    contentView.frame = self.view.bounds;
+    contentView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+    [self.view addSubview:contentView];
+    [self.haoge_touchflow_content didMoveToParentViewController:self];
 }
 @end
