@@ -2,6 +2,7 @@
 #import "HaogeTouchFlowPreferences.h"
 #import "HaogeTouchFlowShared.h"
 #import "HaogeTouchFlowActions.h"
+#import "HaogeTouchFlowPanelSettings.h"
 #import "HaogeTouchFlowGeometry.h"
 @interface HaogeTouchFlowBindingController : UITableViewController
 + (instancetype)haoge_touchflow_controllerWithTrigger:(NSString *)trigger title:(NSString *)title;
@@ -15,12 +16,12 @@
 - (void)viewWillAppear:(BOOL)animated {
     [super viewWillAppear:animated]; self.haoge_touchflow_values = haoge_touchflow_readPreferences(); [self.tableView reloadData];
 }
-- (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView { (void)tableView; return 6; }
+- (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView { (void)tableView; return 7; }
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
-    (void)tableView; const NSInteger counts[]={1,5,5,3,2,4}; return counts[section];
+    (void)tableView; const NSInteger counts[]={1,5,5,3,2,4,1}; return counts[section];
 }
 - (NSString *)tableView:(UITableView *)tableView titleForHeaderInSection:(NSInteger)section {
-    (void)tableView; return @[@"轻触手势 · 首版",@"状态栏左侧",@"状态栏右侧",@"底部与桌面",@"行为",@"灵敏度"][(NSUInteger)section];
+    (void)tableView; return @[@"轻触手势 · 快捷面板版",@"状态栏左侧",@"状态栏右侧",@"底部与桌面",@"行为",@"灵敏度",@"快捷面板"][(NSUInteger)section];
 }
 - (NSString *)tableView:(UITableView *)tableView titleForFooterInSection:(NSInteger)section {
     (void)tableView;
@@ -38,6 +39,9 @@
 }
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)path {
     (void)tableView; UITableViewCell *cell=[[UITableViewCell alloc] initWithStyle:UITableViewCellStyleValue1 reuseIdentifier:nil];
+    if (path.section==6) {
+        cell.textLabel.text=@"面板外观与动画";cell.accessoryType=UITableViewCellAccessoryDisclosureIndicator;return cell;
+    }
     if (path.section==0 || path.section==4) {
         NSString *key=path.section==0?@"enabled":(path.row==0?@"haptics":@"allowLocked");
         cell.textLabel.text=path.section==0?@"启用轻触手势":(path.row==0?@"触发时轻振":@"允许锁屏时执行");
@@ -53,7 +57,7 @@
         NSInteger index=path.section==1?path.row:(path.section==2?path.row+5:path.row+10);
         NSString *trigger=haoge_touchflow_triggerIDs()[(NSUInteger)index]; cell.textLabel.text=haoge_touchflow_triggerTitles()[(NSUInteger)index];
         NSDictionary *binding=haoge_touchflow_binding(self.haoge_touchflow_values,trigger);
-        cell.detailTextLabel.text=haoge_touchflow_bindingEnabled(binding)?haoge_touchflow_actionTitle(binding[@"action"]):@"未启用";
+        cell.detailTextLabel.text=haoge_touchflow_bindingEnabled(binding)?haoge_touchflow_bindingSummary(binding):@"未启用";
         cell.accessoryType=UITableViewCellAccessoryDisclosureIndicator;
     } return cell;
 }
@@ -69,6 +73,9 @@
 - (void)haoge_touchflow_toggled:(UISwitch *)toggle { [self haoge_touchflow_save:toggle.accessibilityIdentifier value:@(toggle.on)]; }
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)path {
     [tableView deselectRowAtIndexPath:path animated:YES];
+    if (path.section==6) {
+        [self.navigationController pushViewController:[HaogeTouchFlowPanelAppearanceController new] animated:YES];return;
+    }
     if (path.section>=1 && path.section<=3) {
         NSInteger index=path.section==1?path.row:(path.section==2?path.row+5:path.row+10);
         HaogeTouchFlowBindingController *editor=[HaogeTouchFlowBindingController haoge_touchflow_controllerWithTrigger:haoge_touchflow_triggerIDs()[(NSUInteger)index] title:haoge_touchflow_triggerTitles()[(NSUInteger)index]];

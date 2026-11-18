@@ -1,5 +1,6 @@
 #pragma once
 #import <Foundation/Foundation.h>
+#import "HaogeTouchFlowPanelModel.h"
 
 // One independent binding per trigger. Values below are the configuration contract.
 static NSString * const HaogeTouchFlowBindingsKey = @"bindings";
@@ -26,6 +27,10 @@ static inline NSDictionary *haoge_touchflow_binding(NSDictionary *snapshot, NSSt
 }
 static inline BOOL haoge_touchflow_bindingEnabled(NSDictionary *binding) {
     id enabled = binding[@"enabled"], action = binding[@"action"];
-    return [enabled isKindOfClass:[NSNumber class]] && [enabled boolValue] &&
-        [action isKindOfClass:[NSString class]] && [action length] && ![action isEqual:@"none"];
+    if (![enabled isKindOfClass:[NSNumber class]] || ![enabled boolValue]) return NO;
+    if (haoge_touchflow_hasPanelMode(binding)) {
+        id ready=binding[@"_haoge_touchflow_panelReady"];
+        return [ready isKindOfClass:[NSNumber class]]?[ready boolValue]:haoge_touchflow_panelItems(binding[@"panelItems"]).count>0;
+    }
+    return [action isKindOfClass:[NSString class]] && [action length] && ![action isEqual:@"none"];
 }

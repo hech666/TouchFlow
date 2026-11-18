@@ -4,6 +4,7 @@
 #import "HaogeTouchFlowPreferences.h"
 #import "HaogeTouchFlowShared.h"
 #import "HaogeTouchFlowActions.h"
+#import "HaogeTouchFlowPanel.h"
 #import "HaogeTouchFlowGeometry.h"
 #import <objc/message.h>
 #import <objc/runtime.h>
@@ -47,7 +48,7 @@ static BOOL haoge_touchflow_locked(void) {
 - (NSString *)haoge_touchflow_statusPrefixForPoint:(CGPoint)point view:(UIView *)view;
 - (NSString *)haoge_touchflow_bottomTriggerForPoint:(CGPoint)point view:(UIView *)view;
 - (double)haoge_touchflow_number:(NSString *)key fallback:(double)fallback min:(double)lo max:(double)hi;
-- (void)haoge_touchflow_fire:(NSString *)trigger;
+- (void)haoge_touchflow_fire:(NSString *)trigger view:(UIView *)view;
 - (void)haoge_touchflow_refresh;
 - (void)haoge_touchflow_recognized:(HaogeTouchFlowBindingRecognizer *)recognizer;
 - (void)haoge_touchflow_desktopPressed:(UILongPressGestureRecognizer *)recognizer;
@@ -143,7 +144,9 @@ static BOOL haoge_touchflow_locked(void) {
     return !haoge_touchflow_locked() || ([allow isKindOfClass:[NSNumber class]] && [allow boolValue]);
 }
 - (BOOL)haoge_touchflow_enabledTrigger:(NSString *)trigger {
-    return trigger.length && [self haoge_touchflow_allowed] && haoge_touchflow_bindingEnabled(haoge_touchflow_binding([self haoge_touchflow_snapshot],trigger));
+    if (!trigger.length || ![self haoge_touchflow_allowed]) return NO;
+    NSDictionary *binding=haoge_touchflow_binding([self haoge_touchflow_snapshot],trigger);
+    return !(haoge_touchflow_hasPanelMode(binding) && haoge_touchflow_locked()) && haoge_touchflow_bindingEnabled(binding);
 }
 - (double)haoge_touchflow_number:(NSString *)key fallback:(double)fallback min:(double)lo max:(double)hi {
     id value = [self haoge_touchflow_snapshot][key];
@@ -175,12 +178,16 @@ static BOOL haoge_touchflow_locked(void) {
     NSString *trigger = side < 0 ? @"bottomLeft" : (side > 0 ? @"bottomRight" : nil);
     return [self haoge_touchflow_enabledTrigger:trigger] ? trigger : nil;
 }
-- (void)haoge_touchflow_fire:(NSString *)trigger {
+- (void)haoge_touchflow_fire:(NSString *)trigger view:(UIView *)view {
     NSAssert(NSThread.isMainThread,@"TouchFlow gestures run on main");
     if (![self haoge_touchflow_enabledTrigger:trigger]) return;
+    NSDictionary *binding=haoge_touchflow_binding([self haoge_touchflow_snapshot],trigger);
+    if (haoge_touchflow_hasPanelMode(binding) && haoge_touchflow_locked()) return;
     id haptics = [self haoge_touchflow_snapshot][@"haptics"];
     if (!haptics || ([haptics isKindOfClass:[NSNumber class]] && [haptics boolValue])) [self.haoge_touchflow_feedback impactOccurred];
-    haoge_touchflow_executeBinding(haoge_touchflow_binding([self haoge_touchflow_snapshot],trigger));
+    if (haoge_touchflow_hasPanelMode(binding)) {
+        [[HaogeTouchFlowPanel haoge_touchflow_shared] haoge_touchflow_showBinding:binding trigger:trigger scene:view.window.windowScene];
+    } else haoge_touchflow_executeBinding(binding);
 }
 - (void)haoge_touchflow_start {
     if (self.haoge_touchflow_started) return;
@@ -258,16 +265,16 @@ static BOOL haoge_touchflow_locked(void) {
     } @finally { self.haoge_touchflow_refreshing = NO; }
 }
 - (void)haoge_touchflow_tapped:(UITapGestureRecognizer *)recognizer {
-    if (recognizer.state == UIGestureRecognizerStateRecognized) [self haoge_touchflow_fire:recognizer.name];
+    if (recognizer.state == UIGestureRecognizerStateRecognized) [self haoge_touchflow_fire:recognizer.name view:recognizer.view];
 }
 - (void)haoge_touchflow_recognized:(HaogeTouchFlowBindingRecognizer *)recognizer {
-    if (recognizer.state == UIGestureRecognizerStateBegan) [self haoge_touchflow_fire:recognizer.haoge_touchflow_trigger];
+    if (recognizer.state == UIGestureRecognizerStateBegan) [self haoge_touchflow_fire:recognizer.haoge_touchflow_trigger view:recognizer.view];
 }
 - (void)haoge_touchflow_desktopPressed:(UILongPressGestureRecognizer *)recognizer {
-    if (recognizer.state == UIGestureRecognizerStateBegan && !haoge_touchflow_locked()) [self haoge_touchflow_fire:@"desktopLongPress"];
+    if (recognizer.state == UIGestureRecognizerStateBegan && !haoge_touchflow_locked()) [self haoge_touchflow_fire:@"desktopLongPress" view:recognizer.view];
 }
 - (BOOL)gestureRecognizer:(UIGestureRecognizer *)gesture shouldReceiveTouch:(UITouch *)touch {
-    if (![self haoge_touchflow_allowed]) return NO;
+    if (![self haoge_touchflow_allowed] || [[HaogeTouchFlowPanel haoge_touchflow_shared] haoge_touchflow_isVisible]) return NO;
     UIView *view = gesture.view;
     if ([gesture isKindOfClass:[HaogeTouchFlowBindingRecognizer class]]) {
         HaogeTouchFlowBindingRecognizer *bindingRecognizer = (id)gesture;
@@ -313,7 +320,7 @@ static BOOL haoge_touchflow_locked(void) {
     return YES;
 }
 - (BOOL)haoge_touchflow_claimBottomFromManager:(id)manager gesture:(UIGestureRecognizer *)gesture {
-    if (![gesture isKindOfClass:[UIPanGestureRecognizer class]] || haoge_touchflow_locked()) return NO;
+    if ([[HaogeTouchFlowPanel haoge_touchflow_shared] haoge_touchflow_isVisible] || ![gesture isKindOfClass:[UIPanGestureRecognizer class]] || haoge_touchflow_locked()) return NO;
     if (gesture != haoge_touchflow_object(manager,@"homeGestureBottomEdgeRecognizer")) return NO;
     if (![self haoge_touchflow_allowed] || !gesture.view) return NO;
     SEL modeSelector = NSSelectorFromString(@"_currentUnlockedEnvironmentMode");
@@ -340,7 +347,7 @@ static BOOL haoge_touchflow_locked(void) {
         if (haoge_touchflow_upward(translation.x,translation.y,
                 [self haoge_touchflow_number:@"bottomDistance" fallback:110 min:60 max:200])) {
             session[@"fired"] = @YES;
-            [self haoge_touchflow_fire:session[@"trigger"]];
+            [self haoge_touchflow_fire:session[@"trigger"] view:gesture.view];
         }
     }
     if (ended || cancelled) {

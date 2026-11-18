@@ -10,7 +10,7 @@ include $(THEOS)/makefiles/common.mk
 TWEAK_NAME = HaogeTouchFlow
 HaogeTouchFlow_FILES = $(wildcard Hooks/*.xm Sources/*.m)
 HaogeTouchFlow_CFLAGS = -fobjc-arc -I./Headers -I./Sources
-HaogeTouchFlow_FRAMEWORKS = UIKit Foundation CoreFoundation AVFoundation
+HaogeTouchFlow_FRAMEWORKS = UIKit Foundation CoreFoundation AVFoundation QuartzCore
 HaogeTouchFlow_LIBRARIES = substrate
 
 include $(THEOS_MAKE_PATH)/tweak.mk

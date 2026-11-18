@@ -1,5 +1,6 @@
 #import "HaogeTouchFlowConfig.h"
 #import "HaogeTouchFlowPreferences.h"
+#import "HaogeTouchFlowShared.h"
 
 @interface HaogeTouchFlowConfig ()
 @property (atomic, copy) NSDictionary *snapshot;
@@ -41,7 +42,21 @@ static void haoge_touchflow_preferencesDidChange(CFNotificationCenterRef center,
 }
 
 - (void)haoge_touchflow_reload {
-    self.snapshot = haoge_touchflow_readPreferences();
+    NSMutableDictionary *values=[haoge_touchflow_readPreferences() mutableCopy];
+    id saved=values[HaogeTouchFlowBindingsKey];NSMutableDictionary *bindings=[NSMutableDictionary dictionary];
+    if ([saved isKindOfClass:[NSDictionary class]]) {
+        for (NSString *trigger in haoge_touchflow_triggerIDs()) {
+            id row=saved[trigger];if (![row isKindOfClass:[NSDictionary class]]) continue;
+            NSMutableDictionary *binding=[row mutableCopy];
+            [binding removeObjectForKey:@"_haoge_touchflow_panelReady"];
+            if (haoge_touchflow_hasPanelMode(binding)) {
+                NSArray *items=haoge_touchflow_panelItems(binding[@"panelItems"]);
+                binding[@"panelItems"]=items;binding[@"_haoge_touchflow_panelReady"]=@(items.count>0);
+            }
+            bindings[trigger]=[binding copy];
+        }
+    }
+    values[HaogeTouchFlowBindingsKey]=[bindings copy];self.snapshot=[values copy];
     dispatch_async(dispatch_get_main_queue(), ^{
         [[NSNotificationCenter defaultCenter] postNotificationName:HaogeTouchFlowPreferencesChanged object:self];
     });

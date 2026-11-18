@@ -32,8 +32,10 @@ jobs:
         run: |
           clang -std=c11 -Wall -Wextra -Werror Tests/geometry.c -o "$RUNNER_TEMP/geometry"
           "$RUNNER_TEMP/geometry"
-          xcrun clang -fobjc-arc -fblocks -Wall -Wextra -Werror -framework Foundation Tests/bindings.m Sources/HaogeTouchFlowActionCatalog.m -o "$RUNNER_TEMP/bindings"
+          xcrun clang -fobjc-arc -fblocks -Wall -Wextra -Werror -framework Foundation Tests/bindings.m Sources/HaogeTouchFlowActionCatalog.m Sources/HaogeTouchFlowPanelModel.m -o "$RUNNER_TEMP/bindings"
           "$RUNNER_TEMP/bindings"
+          xcrun clang -fobjc-arc -fblocks -Wall -Wextra -Werror -framework Foundation Tests/panel.m Sources/HaogeTouchFlowActionCatalog.m Sources/HaogeTouchFlowPanelModel.m -o "$RUNNER_TEMP/panel-model"
+          "$RUNNER_TEMP/panel-model"
       - name: Build complete tweak and preferences
         run: |
           VERSION="5.2.0-${{ github.run_number }}"
