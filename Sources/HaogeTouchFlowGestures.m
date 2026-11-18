@@ -232,9 +232,12 @@ static BOOL haoge_touchflow_locked(void) {
     self.haoge_touchflow_refreshing = YES;
     @try {
         // Inspect only SpringBoard-owned system gesture windows; never create an overlay window.
-        for (UIWindow *window in UIApplication.sharedApplication.windows) {
-            NSString *name = NSStringFromClass(window.class);
-            if ([name containsString:@"SystemGesture"]) [self haoge_touchflow_attachSystemWindow:window];
+        for (UIScene *scene in UIApplication.sharedApplication.connectedScenes) {
+            if (![scene isKindOfClass:[UIWindowScene class]]) continue;
+            for (UIWindow *window in ((UIWindowScene *)scene).windows) {
+                NSString *name = NSStringFromClass(window.class);
+                if ([name containsString:@"SystemGesture"]) [self haoge_touchflow_attachSystemWindow:window];
+            }
         }
         id manager = haoge_touchflow_object(NSClassFromString(@"SBSystemGestureManager"),@"sharedInstance");
         id window = haoge_touchflow_object(manager,@"windowForSystemGestures");
