@@ -55,7 +55,6 @@
         [toggle addTarget:self action:@selector(haoge_touchflow_toggled:) forControlEvents:UIControlEventValueChanged];
         cell.accessoryView = toggle; cell.selectionStyle = UITableViewCellSelectionStyleNone; return cell;
     }
-    NSArray *catalog = haoge_touchflow_actionCatalog();
     if (path.row == 0) {
         NSString *currentMode=[self.haoge_touchflow_binding[@"mode"] isKindOfClass:[NSString class]]?self.haoge_touchflow_binding[@"mode"]:@"direct";
         cell.textLabel.text=[currentMode isEqual:@"panel"]?@"面板打开后的备用动作":@"直接执行动作";
