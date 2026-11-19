@@ -3,7 +3,6 @@ NSArray<NSDictionary *> *haoge_touchflow_actionCatalog(void) {
     static NSArray *catalog; static dispatch_once_t once;
     dispatch_once(&once, ^{
         catalog = @[
-            @{@"identifier":@"none",@"title":@"不执行动作",@"detail":@"保留系统手势",@"needsValue":@NO},
             @{@"identifier":@"controlCenter",@"title":@"打开控制中心",@"detail":@"系统控制中心",@"needsValue":@NO},
             @{@"identifier":@"lock",@"title":@"锁定屏幕",@"detail":@"模拟锁屏按键",@"needsValue":@NO},
             @{@"identifier":@"appSwitcher",@"title":@"打开多任务",@"detail":@"显示应用切换器",@"needsValue":@NO},
@@ -27,7 +26,7 @@ NSArray<NSDictionary *> *haoge_touchflow_actionCatalog(void) {
 }
 NSString *haoge_touchflow_actionTitle(NSString *identifier) {
     for (NSDictionary *item in haoge_touchflow_actionCatalog()) if ([item[@"identifier"] isEqual:identifier]) return item[@"title"];
-    return @"不执行动作";
+    return @"未知动作";
 }
 BOOL haoge_touchflow_actionNeedsValue(NSString *identifier) {
     for (NSDictionary *item in haoge_touchflow_actionCatalog()) if ([item[@"identifier"] isEqual:identifier]) return [item[@"needsValue"] boolValue];

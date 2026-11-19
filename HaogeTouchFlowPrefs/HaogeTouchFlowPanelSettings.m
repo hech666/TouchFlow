@@ -19,7 +19,7 @@ static void haoge_touchflow_panelError(UIViewController *controller,NSError *err
     self.navigationItem.rightBarButtonItem=[[UIBarButtonItem alloc] initWithTitle:@"保存" style:UIBarButtonItemStyleDone target:self action:@selector(haoge_touchflow_done)];
 }
 - (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView { (void)tableView;return 2; }
-- (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section { (void)tableView;return section==0?3:(NSInteger)haoge_touchflow_actionCatalog().count-1; }
+- (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section { (void)tableView;return section==0?3:(NSInteger)haoge_touchflow_actionCatalog().count; }
 - (NSString *)tableView:(UITableView *)tableView titleForFooterInSection:(NSInteger)section {
     (void)tableView;return section==0?@"参数用于应用 Bundle ID、快捷指令名称或完整 URL。名称和图标可留空，使用动作默认值。图标填写 SF Symbol 名称，例如 bolt.fill。":@"选择动作后点击右上角保存。";
 }
@@ -30,13 +30,13 @@ static void haoge_touchflow_panelError(UIViewController *controller,NSError *err
         NSString *text=[self.haoge_touchflow_item[key] isKindOfClass:[NSString class]]?self.haoge_touchflow_item[key]:@"";
         cell.detailTextLabel.text=text.length?text:@"点击填写";cell.accessoryType=UITableViewCellAccessoryDisclosureIndicator;
     } else {
-        NSDictionary *entry=haoge_touchflow_actionCatalog()[(NSUInteger)path.row+1];cell.textLabel.text=entry[@"title"];cell.detailTextLabel.text=entry[@"detail"];
+        NSDictionary *entry=haoge_touchflow_actionCatalog()[(NSUInteger)path.row];cell.textLabel.text=entry[@"title"];cell.detailTextLabel.text=entry[@"detail"];
         if ([self.haoge_touchflow_item[@"action"] isEqual:entry[@"identifier"]]) cell.accessoryType=UITableViewCellAccessoryCheckmark;
     }return cell;
 }
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)path {
     [tableView deselectRowAtIndexPath:path animated:YES];
-    if (path.section==1) { self.haoge_touchflow_item[@"action"]=haoge_touchflow_actionCatalog()[(NSUInteger)path.row+1][@"identifier"];[tableView reloadData];return; }
+    if (path.section==1) { self.haoge_touchflow_item[@"action"]=haoge_touchflow_actionCatalog()[(NSUInteger)path.row][@"identifier"];[tableView reloadData];return; }
     NSString *key=@[@"value",@"title",@"symbol"][(NSUInteger)path.row];
     UIAlertController *alert=[UIAlertController alertControllerWithTitle:@[@"动作参数",@"显示名称",@"图标符号"][(NSUInteger)path.row] message:nil preferredStyle:UIAlertControllerStyleAlert];
     [alert addTextFieldWithConfigurationHandler:^(UITextField *input) {
@@ -77,7 +77,7 @@ static void haoge_touchflow_panelError(UIViewController *controller,NSError *err
 }
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section { (void)tableView;(void)section;return (NSInteger)self.haoge_touchflow_items.count; }
 - (NSString *)tableView:(UITableView *)tableView titleForFooterInSection:(NSInteger)section {
-    (void)tableView;(void)section;return @"点击 ＋ 添加动作，点击行编辑参数、名称和图标。点击编辑可以删除或拖动排序。最多 30 项；空面板不会接管手势。";
+    (void)tableView;(void)section;return @"使用右上角 ＋ 添加动作；向左滑动即可删除，进入编辑模式可拖动排序。最多 30 项；空面板不会接管手势。";
 }
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)path {
     (void)tableView;NSDictionary *item=self.haoge_touchflow_items[(NSUInteger)path.row];

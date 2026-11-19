@@ -28,12 +28,12 @@
 - (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView { (void)tableView; return 2; }
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
     (void)tableView;
-    return section == 0 ? 1 : (NSInteger)haoge_touchflow_actionCatalog().count + 1;
+    NSArray *catalog=haoge_touchflow_actionCatalog();return section==0?1:(NSInteger)catalog.count+3;
 }
 - (NSString *)tableView:(UITableView *)tableView titleForFooterInSection:(NSInteger)section {
     (void)tableView;
     return section == 0 ? @"启用此手势后，在下方只选择一个执行方式。选择快捷面板后，可添加、删除并排序面板动作；锁屏不弹面板。"
-        : @"直接动作支持应用 Bundle ID、快捷指令名称或带协议的 URL。不执行动作会保留系统手势。";
+        : @"直接动作支持应用 Bundle ID、快捷指令名称或带协议的 URL。";
 }
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)path {
     (void)tableView;
@@ -56,9 +56,15 @@
         if (haoge_touchflow_hasPanelMode(self.haoge_touchflow_binding)) cell.accessoryType=UITableViewCellAccessoryCheckmark;
         return cell;
     }
-    NSDictionary *entry=haoge_touchflow_actionCatalog()[(NSUInteger)path.row-2];
+    if (path.row==2) {
+        NSArray *items=haoge_touchflow_panelItems(self.haoge_touchflow_binding[@"panelItems"]);
+        cell.textLabel.text=@"编辑快捷面板";
+        cell.detailTextLabel.text=items.count?[NSString stringWithFormat:@"%lu 项 · 添加、删除或排序",(unsigned long)items.count]:@"添加面板动作、设置名称和图标";
+        cell.accessoryType=UITableViewCellAccessoryDisclosureIndicator;return cell;
+    }
+    NSDictionary *entry=haoge_touchflow_actionCatalog()[(NSUInteger)path.row-3];
     cell.textLabel.text=entry[@"title"];cell.detailTextLabel.text=entry[@"detail"];
-    NSString *selected=[self.haoge_touchflow_binding[@"action"] isKindOfClass:[NSString class]]?self.haoge_touchflow_binding[@"action"]:@"none";
+    NSString *selected=[self.haoge_touchflow_binding[@"action"] isKindOfClass:[NSString class]]?self.haoge_touchflow_binding[@"action"]:@"";
     if (!haoge_touchflow_hasPanelMode(self.haoge_touchflow_binding) && [selected isEqual:entry[@"identifier"]]) cell.accessoryType=UITableViewCellAccessoryCheckmark;
     return cell;
 }
@@ -91,7 +97,8 @@
         }
         [self haoge_touchflow_save:@{@"mode":@"panel"}];return;
     }
-    NSDictionary *action=haoge_touchflow_actionCatalog()[(NSUInteger)path.row-1];
+    if (path.row==2) { [self haoge_touchflow_editPanelItems]; return; }
+    NSDictionary *action=haoge_touchflow_actionCatalog()[(NSUInteger)path.row-3];
     if ([self haoge_touchflow_save:@{@"mode":@"direct",@"action":action[@"identifier"]}] && [action[@"needsValue"] boolValue]) [self haoge_touchflow_editDirectValue];
 }
 - (void)haoge_touchflow_editPanelItems {

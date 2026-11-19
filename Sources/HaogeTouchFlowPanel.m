@@ -116,6 +116,8 @@ static Class haoge_touchflow_panelWindowClass(void) {
 @property (nonatomic, strong) NSMutableArray<UILabel *> *haoge_touchflow_labels;
 @property (nonatomic, assign) BOOL haoge_touchflow_shown;
 - (void)haoge_touchflow_animateIn;
+- (BOOL)haoge_touchflow_shouldDismissForPoint:(CGPoint)point;
+- (void)haoge_touchflow_outsideTapped:(UITapGestureRecognizer *)gesture;
 @end
 @implementation HaogeTouchFlowPanelController
 - (void)loadView {
@@ -169,6 +171,8 @@ static Class haoge_touchflow_panelWindowClass(void) {
     }];
     UIPanGestureRecognizer *pan=[[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(haoge_touchflow_panned:)];
     pan.delegate=self;[self.haoge_touchflow_sheet addGestureRecognizer:pan];
+    UITapGestureRecognizer *outsideTap=[[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(haoge_touchflow_outsideTapped:)];
+    outsideTap.delegate=self;outsideTap.cancelsTouchesInView=NO;[self.view addGestureRecognizer:outsideTap];
 }
 - (void)viewDidLayoutSubviews {
     [super viewDidLayoutSubviews];CGRect bounds=self.view.bounds;
@@ -215,8 +219,19 @@ static Class haoge_touchflow_panelWindowClass(void) {
     if (button.tag<0 || (NSUInteger)button.tag>=self.haoge_touchflow_items.count) return;
     if (self.haoge_touchflow_selection) self.haoge_touchflow_selection(self.haoge_touchflow_items[(NSUInteger)button.tag]);
 }
+- (BOOL)haoge_touchflow_shouldDismissForPoint:(CGPoint)point {
+    return !CGRectContainsPoint(self.haoge_touchflow_sheet.frame,point);
+}
+- (void)haoge_touchflow_handleOutsideTapAtPoint:(CGPoint)point {
+    if ([self haoge_touchflow_shouldDismissForPoint:point]) [self haoge_touchflow_closePressed];
+}
+- (void)haoge_touchflow_outsideTapped:(UITapGestureRecognizer *)gesture {
+    [self haoge_touchflow_handleOutsideTapAtPoint:[gesture locationInView:self.view]];
+}
 - (BOOL)gestureRecognizer:(UIGestureRecognizer *)gesture shouldReceiveTouch:(UITouch *)touch {
-    CGPoint p=[touch locationInView:self.haoge_touchflow_sheet];(void)gesture;
+    CGPoint point=[touch locationInView:self.view];
+    if ([gesture isKindOfClass:UITapGestureRecognizer.class]) return [self haoge_touchflow_shouldDismissForPoint:point];
+    CGPoint p=[touch locationInView:self.haoge_touchflow_sheet];
     return p.y<20; // Only the grabber drags. Buttons and scrolling retain their touches.
 }
 - (void)haoge_touchflow_panned:(UIPanGestureRecognizer *)pan {

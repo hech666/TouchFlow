@@ -5,6 +5,8 @@
 #import "HaogeTouchFlowPanel.h"
 #import "HaogeTouchFlowPreferences.h"
 #import "HaogeTouchFlowShared.h"
+#import "HaogeTouchFlowActions.h"
+#import "HaogeTouchFlowPanelSettings.h"
 @implementation PSListController
 @end
 @interface SBLockScreenManager : NSObject
@@ -51,18 +53,29 @@ void haoge_touchflow_executeBinding(NSDictionary *binding) {
         }
         Class bindingClass=NSClassFromString(@"HaogeTouchFlowBindingController");SEL factory=NSSelectorFromString(@"haoge_touchflow_controllerWithTrigger:title:");
         UITableViewController *editor=((id (*)(id,SEL,id,id))objc_msgSend)(bindingClass,factory,@"statusLeftTap",@"状态栏左侧单击");
+        [self.navigation pushViewController:editor animated:NO];
         [editor loadViewIfNeeded];[editor viewWillAppear:NO];
-        NSIndexPath *panelRow = [NSIndexPath indexPathForRow:1 inSection:1];
-        [editor tableView:editor.tableView didSelectRowAtIndexPath:panelRow];
-        UITableViewCell *panelCell = [editor tableView:editor.tableView cellForRowAtIndexPath:panelRow];
-        [self haoge_touchflow_testCheck:panelCell.accessoryType == UITableViewCellAccessoryCheckmark message:@"panel is selected in action list"];
         NSArray *catalog=haoge_touchflow_actionCatalog();
-        for (NSUInteger i=0;i<catalog.count;i++) {
-            UITableViewCell *cell=[editor tableView:editor.tableView cellForRowAtIndexPath:[NSIndexPath indexPathForRow:(NSInteger)i+2 inSection:1]];
-            [self haoge_touchflow_testCheck:cell.accessoryType != UITableViewCellAccessoryCheckmark message:@"direct actions unchecked when panel is selected"];
-            [self haoge_touchflow_testCheck:[cell.textLabel.text isEqual:catalog[i][@"title"]] message:@"action row text must match click mapping"];
-        }
-        NSDictionary *item=@{@"id":@"test-item",@"action":@"controlCenter",@"value":@"",@"title":@"控制中心",@"symbol":@"switch.2"};
+        [self haoge_touchflow_testCheck:[editor tableView:editor.tableView numberOfRowsInSection:0]==1 message:@"gesture enable section has one row"];
+    [self haoge_touchflow_testCheck:[editor tableView:editor.tableView numberOfRowsInSection:1]==catalog.count+3 message:@"binding section includes value, panel, editor and every action"];
+    for (NSUInteger i=0;i<catalog.count;i++) {
+        NSIndexPath *path=[NSIndexPath indexPathForRow:(NSInteger)i+3 inSection:1];
+        UITableViewCell *cell=[editor tableView:editor.tableView cellForRowAtIndexPath:path];
+        [self haoge_touchflow_testCheck:[cell.textLabel.text isEqual:catalog[i][@"title"]] message:@"action row matches its click index"];
+        NSDictionary *selected=@{@"enabled":@YES,@"mode":@"direct",@"action":catalog[i][@"identifier"]};
+        [editor setValue:selected forKey:@"haoge_touchflow_binding"];
+        cell=[editor tableView:editor.tableView cellForRowAtIndexPath:path];
+        [self haoge_touchflow_testCheck:cell.accessoryType==UITableViewCellAccessoryCheckmark message:@"checkmark appears on the matching action row"];
+    }
+    [editor setValue:@{@"enabled":@YES,@"mode":@"panel",@"panelItems":@[]} forKey:@"haoge_touchflow_binding"];
+    NSIndexPath *panelEditorRow=[NSIndexPath indexPathForRow:2 inSection:1];
+    [editor tableView:editor.tableView didSelectRowAtIndexPath:panelEditorRow];
+    [self haoge_touchflow_testCheck:[self.navigation.topViewController isKindOfClass:HaogeTouchFlowPanelItemsController.class] message:@"panel editor row opens item settings"];
+    HaogeTouchFlowPanelItemsController *panelItems=(id)self.navigation.topViewController;
+    [panelItems loadViewIfNeeded];
+    [self haoge_touchflow_testCheck:panelItems.navigationItem.rightBarButtonItems.count==2 message:@"panel editor exposes add and edit buttons"];
+    [self.navigation popViewControllerAnimated:NO];
+    NSDictionary *item=@{@"id":@"test-item",@"action":@"controlCenter",@"value":@"",@"title":@"控制中心",@"symbol":@"switch.2"};
         self.binding=@{@"enabled":@YES,@"mode":@"panel",@"panelItems":@[item]};
         [self haoge_touchflow_testCheck:haoge_touchflow_writePreference(@"bindings",@{@"statusLeftTap":self.binding},NULL) message:@"panel list saves"];
         [self haoge_touchflow_testCheck:haoge_touchflow_writePreference(@"enabled",@YES,NULL) message:@"global config saves"];
@@ -94,19 +107,39 @@ void haoge_touchflow_executeBinding(NSDictionary *binding) {
         [self haoge_touchflow_testCheck:buttons.count==1 message:@"one configured action creates one button"];
         UIView *sheet=[controller valueForKey:@"haoge_touchflow_sheet"];
         [self haoge_touchflow_testCheck:CGRectGetMaxY(sheet.frame)<=CGRectGetHeight(overlay.bounds) && CGRectGetMinY(sheet.frame)>=0 message:@"panel fits scene bounds"];
-        UIButton *button=buttons.firstObject;[button sendActionsForControlEvents:UIControlEventTouchUpInside];[button sendActionsForControlEvents:UIControlEventTouchUpInside];
+        SEL outsideCheck=NSSelectorFromString(@"haoge_touchflow_shouldDismissForPoint:");
+        CGPoint outside=CGPointMake(8,CGRectGetHeight(overlay.bounds)*0.5),inside=sheet.center;
+        BOOL dismissOutside=((BOOL (*)(id,SEL,CGPoint))objc_msgSend)(controller,outsideCheck,outside);
+        BOOL dismissInside=((BOOL (*)(id,SEL,CGPoint))objc_msgSend)(controller,outsideCheck,inside);
+        [self haoge_touchflow_testCheck:dismissOutside message:@"tap outside the sheet closes the panel"];
+        [self haoge_touchflow_testCheck:!dismissInside message:@"tap inside the sheet is not treated as outside"];
+        NSArray *outsideRecognizers=controller.view.gestureRecognizers;
+        UITapGestureRecognizer *outsideTap=nil;
+        for (UIGestureRecognizer *recognizer in outsideRecognizers) if ([recognizer isKindOfClass:UITapGestureRecognizer.class]) { outsideTap=(id)recognizer; break; }
+        [self haoge_touchflow_testCheck:outsideTap!=nil message:@"outside dismissal tap recognizer is installed"];
+        ((void (*)(id,SEL,id))objc_msgSend)(controller,NSSelectorFromString(@"haoge_touchflow_outsideTapped:"),outsideTap);
         dispatch_after(dispatch_time(DISPATCH_TIME_NOW,NSEC_PER_SEC),dispatch_get_main_queue(), ^{
             @try {
-                [self haoge_touchflow_testCheck:![panel haoge_touchflow_isVisible] message:@"selection cleans window"];
-                [self haoge_touchflow_testCheck:haoge_touchflow_testExecuted==1 message:@"double selection executes once"];
+                [self haoge_touchflow_testCheck:![panel haoge_touchflow_isVisible] message:@"outside tap closes the panel"];
                 [panel haoge_touchflow_showBinding:self.binding trigger:@"statusLeftTap" scene:nil sourceWindow:nil];
-                [self haoge_touchflow_testCheck:[panel haoge_touchflow_isVisible] message:@"panel can reopen"];
-                [panel haoge_touchflow_dismiss];[panel haoge_touchflow_dismiss];
+                [self haoge_touchflow_testCheck:[panel haoge_touchflow_isVisible] message:@"panel can reopen after outside tap"];
+                NSArray *reopenedButtons=[[panel valueForKey:@"haoge_touchflow_controller"] valueForKey:@"haoge_touchflow_buttons"];
+                UIButton *button=reopenedButtons.firstObject;
+                [button sendActionsForControlEvents:UIControlEventTouchUpInside];[button sendActionsForControlEvents:UIControlEventTouchUpInside];
                 dispatch_after(dispatch_time(DISPATCH_TIME_NOW,NSEC_PER_SEC),dispatch_get_main_queue(), ^{
                     @try {
-                        [self haoge_touchflow_testCheck:![panel haoge_touchflow_isVisible] message:@"repeated close idempotent"];
-                        [self haoge_touchflow_testCheck:haoge_touchflow_testExecuted==1 message:@"cancel must not run action"];
-                        [self haoge_touchflow_testFinish:nil];
+                        [self haoge_touchflow_testCheck:![panel haoge_touchflow_isVisible] message:@"selection cleans window"];
+                        [self haoge_touchflow_testCheck:haoge_touchflow_testExecuted==1 message:@"double selection executes once"];
+                        [panel haoge_touchflow_showBinding:self.binding trigger:@"statusLeftTap" scene:nil sourceWindow:nil];
+                        [self haoge_touchflow_testCheck:[panel haoge_touchflow_isVisible] message:@"panel can reopen"];
+                        [panel haoge_touchflow_dismiss];[panel haoge_touchflow_dismiss];
+                        dispatch_after(dispatch_time(DISPATCH_TIME_NOW,NSEC_PER_SEC),dispatch_get_main_queue(), ^{
+                            @try {
+                                [self haoge_touchflow_testCheck:![panel haoge_touchflow_isVisible] message:@"repeated close idempotent"];
+                                [self haoge_touchflow_testCheck:haoge_touchflow_testExecuted==1 message:@"cancel must not run action"];
+                                [self haoge_touchflow_testFinish:nil];
+                            } @catch (NSException *e) {[self haoge_touchflow_testFinish:e.reason];}
+                        });
                     } @catch (NSException *e) {[self haoge_touchflow_testFinish:e.reason];}
                 });
             } @catch (NSException *e) {[self haoge_touchflow_testFinish:e.reason];}

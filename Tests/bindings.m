@@ -20,7 +20,8 @@ int main(void) {
    NSCAssert([haoge_touchflow_actionTitle(identifier) isEqual:entry[@"title"]],@"UI title matches runtime catalog");
    NSCAssert(haoge_touchflow_actionNeedsValue(identifier)==[entry[@"needsValue"] boolValue],@"parameter contract matches");
   }
-  NSCAssert(seen.count==19,@"18 actions plus none");
+  NSCAssert(seen.count==18,@"18 executable actions");
+  NSCAssert(![seen containsObject:@"none"],@"none is not exposed in the action catalog");
   NSArray *added=@[@"respring",@"screenRecording",@"kayokoClipboard",@"wechatPay",@"alipayPay",@"wechatScan",@"alipayScan"];
   NSMutableArray *panelRows=[NSMutableArray array];
   for (NSString *identifier in added) {
