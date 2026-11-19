@@ -4,6 +4,7 @@
 #import "HaogeTouchFlowPreferences.h"
 #import "HaogeTouchFlowShared.h"
 #import <objc/message.h>
+#import <objc/runtime.h>
 #import <math.h>
 #import <QuartzCore/QuartzCore.h>
 
@@ -60,6 +61,37 @@ static UIWindowScene *haoge_touchflow_applicationScene(UIWindowScene *sourceScen
 @implementation HaogeTouchFlowPanelWindow
 - (BOOL)canBecomeKeyWindow { return NO; }
 @end
+// The original OneStepX panel window subclasses SpringBoard's SBFTouchPassThroughWindow,
+// which keeps receiving touches even while a third-party app is foreground. A plain
+// UIWindow owned by the SpringBoard process stops being hit-tested once an app is
+// active, so outside taps never reach the dimmer inside apps. Recreate that subclass
+// at runtime because the private class is not available to link.
+static BOOL haoge_touchflow_panelWindowCanKey(id self, SEL _cmd) { (void)self;(void)_cmd;return NO; }
+static UIView *haoge_touchflow_panelWindowHitTest(id self, SEL _cmd, CGPoint point, UIEvent *event) {
+    UIWindow *window=(UIWindow *)self;
+    if (window.hidden || window.alpha<=0.01 || !window.userInteractionEnabled) return nil;
+    UIView *rootView=window.rootViewController.view;
+    if (!rootView) return nil;
+    return [rootView hitTest:[rootView convertPoint:point fromView:window] withEvent:event];
+}
+static Class haoge_touchflow_panelWindowClass(void) {
+    static Class cls;static dispatch_once_t once;
+    dispatch_once(&once, ^{
+        Class base=NSClassFromString(@"SBFTouchPassThroughWindow");
+        if (base && [base isSubclassOfClass:[UIWindow class]]) {
+            Class dynamic=objc_allocateClassPair(base,"HaogeTouchFlowPanelPassThroughWindow",0);
+            if (dynamic) {
+                Method hit=class_getInstanceMethod([UIView class],@selector(hitTest:withEvent:));
+                class_addMethod(dynamic,@selector(hitTest:withEvent:),(IMP)haoge_touchflow_panelWindowHitTest,
+                    hit?method_getTypeEncoding(hit):"@24@0:8{CGPoint=dd}16@32");
+                class_addMethod(dynamic,@selector(canBecomeKeyWindow),(IMP)haoge_touchflow_panelWindowCanKey,"B@:");
+                objc_registerClassPair(dynamic);cls=dynamic;
+            }
+        }
+        if (!cls) cls=[HaogeTouchFlowPanelWindow class];
+    });
+    return cls;
+}
 
 @interface HaogeTouchFlowPanelController : UIViewController <UIGestureRecognizerDelegate>
 @property (nonatomic, copy) NSArray<NSDictionary *> *haoge_touchflow_items;
@@ -99,7 +131,9 @@ static UIWindowScene *haoge_touchflow_applicationScene(UIWindowScene *sourceScen
     UIView *content=self.haoge_touchflow_sheet.contentView;
     self.haoge_touchflow_grabber=[UIView new];self.haoge_touchflow_grabber.backgroundColor=UIColor.tertiaryLabelColor;
     self.haoge_touchflow_grabber.layer.cornerRadius=2.5;[content addSubview:self.haoge_touchflow_grabber];
-    self.haoge_touchflow_scroll=[UIScrollView new];self.haoge_touchflow_scroll.alwaysBounceVertical=YES;
+    self.haoge_touchflow_scroll=[UIScrollView new];self.haoge_touchflow_scroll.alwaysBounceVertical=NO;
+    self.haoge_touchflow_scroll.scrollEnabled=NO;self.haoge_touchflow_scroll.bounces=NO;
+    self.haoge_touchflow_scroll.showsVerticalScrollIndicator=NO;
     self.haoge_touchflow_scroll.contentInsetAdjustmentBehavior=UIScrollViewContentInsetAdjustmentNever;
     [content addSubview:self.haoge_touchflow_scroll];
     self.haoge_touchflow_buttons=[NSMutableArray array];self.haoge_touchflow_icons=[NSMutableArray array];self.haoge_touchflow_labels=[NSMutableArray array];
@@ -130,15 +164,20 @@ static UIWindowScene *haoge_touchflow_applicationScene(UIWindowScene *sourceScen
     self.haoge_touchflow_dimmer.frame=bounds;
     CGFloat margin=12,width=MAX(1,CGRectGetWidth(bounds)-2*margin);
     CGFloat bottom=MAX(self.view.safeAreaInsets.bottom,12),top=MAX(self.view.safeAreaInsets.top,20);
-    CGFloat height=MIN(haoge_touchflow_panelNumber(self.haoge_touchflow_settings,@"panelHeight"),MAX(150,CGRectGetHeight(bounds)-top-20));
+    CGFloat configuredRow=haoge_touchflow_panelNumber(self.haoge_touchflow_settings,@"panelRowHeight");
+    CGFloat columnsCount=haoge_touchflow_panelNumber(self.haoge_touchflow_settings,@"panelColumns");
+    NSInteger columns=(NSInteger)columnsCount;
+    NSInteger rows=(self.haoge_touchflow_buttons.count+(NSUInteger)columns-1)/(NSUInteger)columns;
+    // Fixed grid, never scrolling: grow the sheet until every row is visible, capped by the screen.
+    CGFloat height=MIN(MAX(150,CGRectGetHeight(bounds)-top-20),MAX(haoge_touchflow_panelNumber(self.haoge_touchflow_settings,@"panelHeight"),rows*configuredRow+20+MIN(bottom,38)));
     self.haoge_touchflow_sheet.bounds=CGRectMake(0,0,width,height);
     self.haoge_touchflow_sheet.center=CGPointMake(CGRectGetMidX(bounds),CGRectGetHeight(bounds)-height*0.5-8);
     self.haoge_touchflow_grabber.frame=CGRectMake((width-36)/2,9,36,5);
     CGFloat usable=MAX(1,height-20-MIN(bottom,38));self.haoge_touchflow_scroll.frame=CGRectMake(8,12,MAX(1,width-16),usable);
-    NSInteger columns=(NSInteger)haoge_touchflow_panelNumber(self.haoge_touchflow_settings,@"panelColumns");
     CGFloat cellWidth=CGRectGetWidth(self.haoge_touchflow_scroll.bounds)/(CGFloat)columns;
-    CGFloat rowHeight=MAX(haoge_touchflow_panelNumber(self.haoge_touchflow_settings,@"panelRowHeight"),haoge_touchflow_panelNumber(self.haoge_touchflow_settings,@"panelIconSize")+36);
+    CGFloat rowHeight=MIN(configuredRow,usable/(CGFloat)MAX(1,rows));
     CGFloat size=MIN(haoge_touchflow_panelNumber(self.haoge_touchflow_settings,@"panelIconSize"),MAX(18,cellWidth-12));
+    size=MIN(size,MAX(16,rowHeight-22));
     [self.haoge_touchflow_buttons enumerateObjectsUsingBlock:^(UIButton *button,NSUInteger index,BOOL *stop) {
         (void)stop;button.frame=CGRectMake((index%(NSUInteger)columns)*cellWidth,(index/(NSUInteger)columns)*rowHeight,cellWidth,rowHeight);
         UIImageView *icon=self.haoge_touchflow_icons[index];icon.frame=CGRectMake((cellWidth-size)/2,4,size,size);
@@ -146,8 +185,7 @@ static UIWindowScene *haoge_touchflow_applicationScene(UIWindowScene *sourceScen
         icon.preferredSymbolConfiguration=[UIImageSymbolConfiguration configurationWithPointSize:size*0.53 weight:UIImageSymbolWeightMedium];
         self.haoge_touchflow_labels[index].frame=CGRectMake(3,size+8,MAX(1,cellWidth-6),MAX(1,rowHeight-size-10));
     }];
-    NSInteger rows=(self.haoge_touchflow_buttons.count+(NSUInteger)columns-1)/(NSUInteger)columns;
-    self.haoge_touchflow_scroll.contentSize=CGSizeMake(CGRectGetWidth(self.haoge_touchflow_scroll.bounds),rows*rowHeight);
+    self.haoge_touchflow_scroll.contentSize=CGSizeMake(CGRectGetWidth(self.haoge_touchflow_scroll.bounds),usable);
 }
 - (void)viewDidAppear:(BOOL)animated {
     [super viewDidAppear:animated];
@@ -258,7 +296,8 @@ static void haoge_touchflow_panelLockChanged(CFNotificationCenterRef center,void
     __weak typeof(self) weakSelf=self;
     controller.haoge_touchflow_close=^{[weakSelf haoge_touchflow_dismiss];};
     controller.haoge_touchflow_selection=^(NSDictionary *item) { [weakSelf haoge_touchflow_select:item]; };
-    HaogeTouchFlowPanelWindow *window=[[HaogeTouchFlowPanelWindow alloc] initWithWindowScene:scene];
+    Class windowClass=haoge_touchflow_panelWindowClass();
+    UIWindow *window=((UIWindow *(*)(id,SEL,id))objc_msgSend)([windowClass alloc],@selector(initWithWindowScene:),scene);
     NSLog(@"[TouchFlowPanel] windowClass=%@ window=%@ scene=%@ bounds=%@",NSStringFromClass(window.class),window,scene,NSStringFromCGRect(scene.coordinateSpace.bounds));
     if (!window) {
         NSLog(@"[TouchFlow] Panel window creation failed for %@", trigger);

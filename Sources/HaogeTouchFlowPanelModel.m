@@ -47,7 +47,7 @@ NSString *haoge_touchflow_panelItemTitle(NSDictionary *item) {
     return haoge_touchflow_actionTitle(item[@"action"]);
 }
 NSString *haoge_touchflow_actionSymbol(NSString *action) {
-    NSDictionary *symbols=@{@"controlCenter":@"switch.2",@"lock":@"lock.fill",@"appSwitcher":@"rectangle.stack.fill",@"respring":@"arrow.clockwise",@"screenshot":@"camera.viewfinder",@"screenRecording":@"record.circle",@"kayokoClipboard":@"doc.on.clipboard.fill",@"wechatPay":@"creditcard.fill",@"alipayPay":@"creditcard",@"wechatScan":@"qrcode.viewfinder",@"alipayScan":@"viewfinder",@"flashlight":@"flashlight.on.fill",@"playPause":@"playpause.fill",@"nextTrack":@"forward.end.fill",@"previousTrack":@"backward.end.fill",@"openApp":@"app.fill",@"runShortcut":@"square.stack.3d.up.fill",@"openURL":@"link"};
+    NSDictionary *symbols=@{@"controlCenter":@"switch.2",@"lock":@"lock.fill",@"appSwitcher":@"rectangle.stack.fill",@"respring":@"arrow.clockwise",@"screenshot":@"camera.viewfinder",@"screenRecording":@"record.circle",@"kayokoClipboard":@"doc.on.clipboard.fill",@"wechatPay":@"creditcard.fill",@"alipayPay":@"creditcard",@"wechatScan":@"qrcode.viewfinder",@"alipayScan":@"qrcode.viewfinder",@"flashlight":@"flashlight.on.fill",@"playPause":@"playpause.fill",@"nextTrack":@"forward.end.fill",@"previousTrack":@"backward.end.fill",@"openApp":@"app.fill",@"runShortcut":@"square.stack.3d.up.fill",@"openURL":@"link"};
     return symbols[action]?:@"square.grid.2x2.fill";
 }
 NSArray<NSDictionary *> *haoge_touchflow_panelSettings(void) {

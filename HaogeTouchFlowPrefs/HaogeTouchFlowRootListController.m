@@ -25,7 +25,7 @@
 }
 - (NSString *)tableView:(UITableView *)tableView titleForFooterInSection:(NSInteger)section {
     (void)tableView;
-    if (section==0) return @"安装后默认关闭。先停用 OneStepX 及其他同区域手势插件，再开启本插件。";
+    if (section==0) return @"安装后默认关闭。先停用其他同区域手势插件，再开启本插件。";
     if (section==3) return @"底部中间区域保留系统上滑。手势在竖屏识别；桌面长按只识别空白区域。";
     if (section==4) return @"默认不在锁屏执行动作。开启后系统仍要求解锁受保护内容。设置保存后自动生效。";
     if (section==5) return @"可调整触发区域和距离。首次安装后需由包管理器重新载入 SpringBoard；以后改设置不用注销。";
