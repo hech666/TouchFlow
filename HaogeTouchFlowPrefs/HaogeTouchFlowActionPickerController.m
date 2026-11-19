@@ -3,7 +3,7 @@
 #import "HaogeTouchFlowShared.h"
 #import "HaogeTouchFlowActions.h"
 
-@interface HaogeTouchFlowPanelActionPickerController : UITableViewController
+@interface HaogeTouchFlowPanelActionPickerController ()
 @property(nonatomic,copy)NSString *haoge_touchflow_trigger;
 @property(nonatomic,strong)NSArray<NSDictionary *> *haoge_touchflow_existingItems;
 @property(nonatomic,strong)NSMutableSet<NSString *> *haoge_touchflow_selectedIDs;
@@ -55,7 +55,7 @@
     }
     UIAlertController *alert=[UIAlertController alertControllerWithTitle:entry[@"title"] message:entry[@"valueHint"]?:@"请输入动作参数" preferredStyle:UIAlertControllerStyleAlert];
     [alert addTextFieldWithConfigurationHandler:^(UITextField *field){field.autocapitalizationType=UITextAutocapitalizationTypeNone;field.autocorrectionType=UITextAutocorrectionTypeNo;}];
-    [alert addAction:[UIAlertAction actionWithTitle:@"取消整个批量添加" style:UIAlertActionStyleCancel handler:^(UIAlertAction *action){(void)action;self.haoge_touchflow_pendingEntries=nil;self.haoge_touchflow_pendingItems=nil;self.haoge_touchflow_pendingIndex=0;[self.haoge_touchflow_selectedIDs removeAllObjects];self.navigationItem.rightBarButtonItem.title=@"保存所选";}]];
+    [alert addAction:[UIAlertAction actionWithTitle:@"取消整个批量添加" style:UIAlertActionStyleCancel handler:^(UIAlertAction *action){(void)action;self.haoge_touchflow_pendingEntries=nil;self.haoge_touchflow_pendingItems=nil;self.haoge_touchflow_pendingIndex=0;[self.haoge_touchflow_selectedIDs removeAllObjects];self.navigationItem.rightBarButtonItem.title=@"保存所选";[self.tableView reloadData];}]];
     [alert addAction:[UIAlertAction actionWithTitle:@"添加" style:UIAlertActionStyleDefault handler:^(UIAlertAction *action){
         (void)action;NSString *value=[alert.textFields.firstObject.text?:@"" stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
         if(!value.length||([identifier isEqual:@"openURL"]&&![NSURL URLWithString:value].scheme.length)){alert.message=[identifier isEqual:@"openURL"]?@"请输入包含协议的完整 URL。":@"此动作需要填写参数。";[alert.textFields.firstObject becomeFirstResponder];return;}
@@ -66,7 +66,7 @@
 }
 - (void)haoge_touchflow_saveSelection {
     if(!self.haoge_touchflow_selectedIDs.count)return;
-    NSArray *current=haoge_touchflow_panelItems(haoge_touchflow_binding(haoge_touchflow_readPreferences(),self.haoge_touchflow_trigger)[@"panelItems"]);
+    NSDictionary *values=haoge_touchflow_readPreferences();NSDictionary *currentBinding=haoge_touchflow_binding(values,self.haoge_touchflow_trigger);NSArray *current=haoge_touchflow_panelItems(currentBinding[@"panelItems"]);
     self.haoge_touchflow_pendingItems=[current mutableCopy];NSMutableSet *existing=[NSMutableSet setWithArray:[current valueForKey:@"action"]];
     NSMutableArray *selectedEntries=[NSMutableArray array];for(NSDictionary *entry in haoge_touchflow_actionCatalog()){NSString *identifier=entry[@"identifier"];if([self.haoge_touchflow_selectedIDs containsObject:identifier]&&![existing containsObject:identifier])[selectedEntries addObject:entry];}
     self.haoge_touchflow_pendingEntries=selectedEntries;
