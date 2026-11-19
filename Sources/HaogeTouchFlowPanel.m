@@ -101,7 +101,6 @@ static Class haoge_touchflow_panelWindowClass(void) {
 @property (nonatomic, strong) UIControl *haoge_touchflow_dimmer;
 @property (nonatomic, strong) UIVisualEffectView *haoge_touchflow_sheet;
 @property (nonatomic, strong) UIScrollView *haoge_touchflow_scroll;
-@property (nonatomic, strong) UIView *haoge_touchflow_grabber;
 @property (nonatomic, strong) NSMutableArray<UIButton *> *haoge_touchflow_buttons;
 @property (nonatomic, strong) NSMutableArray<UIImageView *> *haoge_touchflow_icons;
 @property (nonatomic, strong) NSMutableArray<UILabel *> *haoge_touchflow_labels;
@@ -129,8 +128,6 @@ static Class haoge_touchflow_panelWindowClass(void) {
     self.haoge_touchflow_sheet.layer.cornerRadius=haoge_touchflow_panelNumber(settings,@"panelCornerRadius");
     [self.view addSubview:self.haoge_touchflow_sheet];
     UIView *content=self.haoge_touchflow_sheet.contentView;
-    self.haoge_touchflow_grabber=[UIView new];self.haoge_touchflow_grabber.backgroundColor=UIColor.tertiaryLabelColor;
-    self.haoge_touchflow_grabber.layer.cornerRadius=2.5;[content addSubview:self.haoge_touchflow_grabber];
     self.haoge_touchflow_scroll=[UIScrollView new];self.haoge_touchflow_scroll.alwaysBounceVertical=NO;
     self.haoge_touchflow_scroll.scrollEnabled=NO;self.haoge_touchflow_scroll.bounces=NO;
     self.haoge_touchflow_scroll.showsVerticalScrollIndicator=NO;
@@ -154,8 +151,6 @@ static Class haoge_touchflow_panelWindowClass(void) {
         [button addSubview:icon];[button addSubview:label];[self.haoge_touchflow_scroll addSubview:button];
         [self.haoge_touchflow_buttons addObject:button];[self.haoge_touchflow_icons addObject:icon];[self.haoge_touchflow_labels addObject:label];
     }];
-    UIPanGestureRecognizer *pan=[[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(haoge_touchflow_panned:)];
-    pan.delegate=self;[self.haoge_touchflow_sheet addGestureRecognizer:pan];
     UITapGestureRecognizer *outsideTap=[[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(haoge_touchflow_outsideTapped:)];
     outsideTap.delegate=self;outsideTap.cancelsTouchesInView=NO;[self.view addGestureRecognizer:outsideTap];
 }
@@ -163,23 +158,24 @@ static Class haoge_touchflow_panelWindowClass(void) {
     [super viewDidLayoutSubviews];CGRect bounds=self.view.bounds;
     self.haoge_touchflow_dimmer.frame=bounds;
     CGFloat margin=12,width=MAX(1,CGRectGetWidth(bounds)-2*margin);
-    CGFloat bottom=MAX(self.view.safeAreaInsets.bottom,12),top=MAX(self.view.safeAreaInsets.top,20);
+    CGFloat top=MAX(self.view.safeAreaInsets.top,20);
     CGFloat configuredRow=haoge_touchflow_panelNumber(self.haoge_touchflow_settings,@"panelRowHeight");
     CGFloat columnsCount=haoge_touchflow_panelNumber(self.haoge_touchflow_settings,@"panelColumns");
     NSInteger columns=(NSInteger)columnsCount;
     NSInteger rows=(self.haoge_touchflow_buttons.count+(NSUInteger)columns-1)/(NSUInteger)columns;
     // Fixed grid, never scrolling: grow the sheet until every row is visible, capped by the screen.
-    CGFloat height=MIN(MAX(150,CGRectGetHeight(bounds)-top-20),MAX(haoge_touchflow_panelNumber(self.haoge_touchflow_settings,@"panelHeight"),rows*configuredRow+20+MIN(bottom,38)));
+    CGFloat height=MIN(MAX(150,CGRectGetHeight(bounds)-top-20),MAX(haoge_touchflow_panelNumber(self.haoge_touchflow_settings,@"panelHeight"),rows*configuredRow+24));
     self.haoge_touchflow_sheet.bounds=CGRectMake(0,0,width,height);
     self.haoge_touchflow_sheet.center=CGPointMake(CGRectGetMidX(bounds),CGRectGetHeight(bounds)-height*0.5-8);
-    self.haoge_touchflow_grabber.frame=CGRectMake((width-36)/2,9,36,5);
-    CGFloat usable=MAX(1,height-20-MIN(bottom,38));self.haoge_touchflow_scroll.frame=CGRectMake(8,12,MAX(1,width-16),usable);
+    CGFloat usable=MAX(1,height-24);self.haoge_touchflow_scroll.frame=CGRectMake(8,12,MAX(1,width-16),usable);
     CGFloat cellWidth=CGRectGetWidth(self.haoge_touchflow_scroll.bounds)/(CGFloat)columns;
     CGFloat rowHeight=MIN(configuredRow,usable/(CGFloat)MAX(1,rows));
+    CGFloat gridHeight=rowHeight*(CGFloat)rows;
+    CGFloat gridTop=MAX(0,(usable-gridHeight)*0.5);
     CGFloat size=MIN(haoge_touchflow_panelNumber(self.haoge_touchflow_settings,@"panelIconSize"),MAX(18,cellWidth-12));
     size=MIN(size,MAX(16,rowHeight-22));
     [self.haoge_touchflow_buttons enumerateObjectsUsingBlock:^(UIButton *button,NSUInteger index,BOOL *stop) {
-        (void)stop;button.frame=CGRectMake((index%(NSUInteger)columns)*cellWidth,(index/(NSUInteger)columns)*rowHeight,cellWidth,rowHeight);
+        (void)stop;button.frame=CGRectMake((index%(NSUInteger)columns)*cellWidth,gridTop+(index/(NSUInteger)columns)*rowHeight,cellWidth,rowHeight);
         UIImageView *icon=self.haoge_touchflow_icons[index];icon.frame=CGRectMake((cellWidth-size)/2,4,size,size);
         icon.layer.cornerRadius=0;
         icon.preferredSymbolConfiguration=[UIImageSymbolConfiguration configurationWithPointSize:size*0.53 weight:UIImageSymbolWeightMedium];
@@ -216,14 +212,9 @@ static Class haoge_touchflow_panelWindowClass(void) {
     [self haoge_touchflow_handleOutsideTapAtPoint:[gesture locationInView:self.view]];
 }
 - (BOOL)gestureRecognizer:(UIGestureRecognizer *)gesture shouldReceiveTouch:(UITouch *)touch {
+    (void)gesture;
     CGPoint point=[touch locationInView:self.view];
-    if ([gesture isKindOfClass:UITapGestureRecognizer.class]) return [self haoge_touchflow_shouldDismissForPoint:point];
-    CGPoint p=[touch locationInView:self.haoge_touchflow_sheet];
-    return p.y<20; // Only the grabber drags. Buttons and scrolling retain their touches.
-}
-- (void)haoge_touchflow_panned:(UIPanGestureRecognizer *)pan {
-    if (pan.state!=UIGestureRecognizerStateEnded) return;
-    if ([pan translationInView:self.view].y>40 || [pan velocityInView:self.view].y>400) [self haoge_touchflow_closePressed];
+    return [self haoge_touchflow_shouldDismissForPoint:point];
 }
 @end
 
