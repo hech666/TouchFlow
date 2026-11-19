@@ -36,6 +36,8 @@ jobs:
           "$RUNNER_TEMP/bindings"
           xcrun clang -fobjc-arc -fblocks -Wall -Wextra -Werror -framework Foundation Tests/panel.m Sources/HaogeTouchFlowActionCatalog.m Sources/HaogeTouchFlowPanelModel.m -o "$RUNNER_TEMP/panel-model"
           "$RUNNER_TEMP/panel-model"
+          xcrun clang -fobjc-arc -fblocks -Wall -Wextra -Werror -DTHEOS_PACKAGE_SCHEME_ROOTHIDE=1 -ITests/Support -framework Foundation Tests/extended_actions.m -o "$RUNNER_TEMP/extended-actions"
+          "$RUNNER_TEMP/extended-actions"
       - name: Build complete tweak and preferences
         run: |
           VERSION="5.2.0-${{ github.run_number }}"

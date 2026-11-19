@@ -18,7 +18,11 @@
 
 v2 在原 `bindings[trigger]` 结构增加 `mode=panel` 和 `panelItems`，保留 `action/value`；没有 mode 的旧设置继续按直接动作解释。面板在对应前台 scene 显示，点击项目后关闭并重新检查配置，再执行动作；空列表、无效动作或未填写必需参数不会接管手势。
 
-当前 v2 源码尚未编译或真机测试，原稳定的 5.2.0-8 保留在 Git 分支 `baseline-5.2.0-8`。
+5.2.0-17 已通过 GitHub 云编译，用户确认快捷面板可在真机唤出。本次新增动作以该提交为基线；原 5.2.0-8 保留在 Git 分支 `baseline-5.2.0-8`。
+
+新增七项内置动作：注销 SpringBoard、开始／停止系统录屏、呼出 Kayoko 剪切板、微信付款码、支付宝付款码、微信扫一扫、支付宝扫一扫。直接手势和面板项目均可选择，无需输入参数，既有截图实现保持原样。录屏默认不启用麦克风，再次执行时停止；注销使用越狱根中的 `sbreload`。Kayoko 需已安装并启用。
+
+四个应用入口按用户指定的 URL 打开：`weixin://widget/pay`、`alipay://platformapi/startapp?appId=20000056`、`weixin://scanqrcode`、`alipay://platformapi/startapp?saId=10000007`。实际页面是否打开由对应应用版本处理，登录、相机或付款码验证仍由应用完成。新增七项的真机执行尚待验证。
 
 应用使用 Bundle ID 输入，例如 `com.tencent.xin`；快捷指令输入完整名称；链接输入完整协议。首版不包含应用列表选择器、快捷面板、连续动作流、硬件按键扩展或横屏手势。
 

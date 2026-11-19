@@ -46,3 +46,11 @@ v2 面板使用匹配触发手势的活动 `UIWindowScene` 创建普通 `UIWindo
 新增全局外观值：高度、列数、图标大小、文字大小、行高、圆角、图标圆角百分比、背景 dim、开合时长、名称显隐和 system/light/dark appearance。首版用户值缺失时使用模型默认值，不覆盖用户原 binding。
 
 注意：本节只记录源码数据契约和实现方案；构建、成品验包和设备面板交互均需分别验证，不能由原 OneStepX 伪源码或前一版安装成功推断。
+
+## 新增内置动作（2026-11-19）
+
+- `respring`：原 OneStepX `systemLogoutKeepingBackground` 分派 `0x13594..0x135ac`，执行函数 `0x14814`，常量 argv `0x24820 = {"sbreload", NULL}`，路径解析 `0x1588c`（优先 jbroot），`0x15924` 使用 `posix_spawn`。新实现使用现有 `haoge_touchflow_resourcePath(@"/usr/bin/sbreload")`，不缓存随机越狱根，异步回收子进程。没有复用原版杀后台的 `killall -9 SpringBoard`。
+- `screenRecording`：原 `0x159cc` 取得 `RPScreenRecorder.sharedRecorder`，读 `systemRecording`，开录 `startSystemRecordingWithMicrophoneEnabled:handler:`、停止 `stopSystemRecording:`。原全局 block `0x24888/0x248a8` 的精确签名同为 `v16@?0@"NSError"8`，invoke `0x163a8/0x163dc`。新实现默认不启用麦克风，校验方法 ABI，主线程串行调用并用完成回调保护重复触发。iOS16 runtime header：`qingralf/iOS16-Runtime-Headers`，`Frameworks/ReplayKit.framework/RPScreenRecorder.h`。
+- `kayokoClipboard`：原 `systemKayokoInterface` 在 `0x136dc..0x136f8` 使用 `codes.aurora.kayoko.core.show`，`0x14c24` 发 Darwin 通知。与 Kayoko v33 (`b495905e1851be17e9a2057b49ebeebf7d00ba3a`) 的 `Preferences/NotificationKeys.h` 与 `Tweak/Core/KayokoCore.m` 接收端一致；TouchFlow 只发此通知，不改 Kayoko。
+- 四个微信／支付宝入口使用用户在本次会话提供的原样 URL；入口常量只存在共享动作目录中，使用原有 URL 打开器，不增加应用内 Hook。
+- CI `Tests/extended_actions.m` 使用真实 Objective-C 调度配合无副作用 mocks，检查 ReplayKit 开停、busy/error 回调、ABI 拒绝、Kayoko 通知及 sbreload 路径/参数/失败分支；不在用户设备执行注销或录制。`Tests/bindings.m` 覆盖七项直接绑定、面板归一化及四个 URL 的完整字符串匹配。上述验证不代替真机执行验收。

@@ -20,7 +20,23 @@ int main(void) {
    NSCAssert([haoge_touchflow_actionTitle(identifier) isEqual:entry[@"title"]],@"UI title matches runtime catalog");
    NSCAssert(haoge_touchflow_actionNeedsValue(identifier)==[entry[@"needsValue"] boolValue],@"parameter contract matches");
   }
-  NSCAssert(seen.count==12,@"11 actions plus none");
+  NSCAssert(seen.count==19,@"18 actions plus none");
+  NSArray *added=@[@"respring",@"screenRecording",@"kayokoClipboard",@"wechatPay",@"alipayPay",@"wechatScan",@"alipayScan"];
+  NSMutableArray *panelRows=[NSMutableArray array];
+  for (NSString *identifier in added) {
+   NSCAssert([seen containsObject:identifier] && !haoge_touchflow_actionNeedsValue(identifier),@"new actions are available without typed parameters");
+   NSCAssert(haoge_touchflow_bindingEnabled(@{@"enabled":@YES,@"action":identifier}),@"new direct binding recognized");
+   [panelRows addObject:@{@"action":identifier}];
+  }
+  NSArray *normalized=haoge_touchflow_panelItems(panelRows);
+  NSCAssert(normalized.count==added.count,@"new panel rows survive validation");
+  for (NSUInteger i=0;i<added.count;i++) NSCAssert([normalized[i][@"action"] isEqual:added[i]],@"new panel action ordering preserved");
+  NSDictionary *links=@{@"wechatScan":@"weixin://scanqrcode",@"wechatPay":@"weixin://widget/pay",@"alipayScan":@"alipay://platformapi/startapp?saId=10000007",@"alipayPay":@"alipay://platformapi/startapp?appId=20000056"};
+  for (NSString *identifier in links) {
+   NSCAssert([haoge_touchflow_actionURL(identifier).absoluteString isEqual:links[identifier]],@"app URL matches the requested entry exactly");
+   NSCAssert(!haoge_touchflow_actionNeedsValue(identifier),@"built-in app entries require no value");
+  }
+  NSCAssert(!haoge_touchflow_actionURL(@"openURL") && !haoge_touchflow_actionURL(@"unknown"),@"custom and unknown actions cannot acquire built-in URLs");
   NSCAssert(haoge_touchflow_actionNeedsValue(@"openApp") && haoge_touchflow_actionNeedsValue(@"runShortcut") && haoge_touchflow_actionNeedsValue(@"openURL"),@"required inputs");
   NSURLComponents *url=[NSURLComponents componentsWithString:@"shortcuts://run-shortcut"];
   NSString *name=@"音乐 & 灯光 #1";url.queryItems=@[[NSURLQueryItem queryItemWithName:@"name" value:name]];

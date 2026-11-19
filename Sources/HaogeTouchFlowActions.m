@@ -1,5 +1,6 @@
 #import "HaogeTouchFlowActions.h"
 #import "HaogeTouchFlowShared.h"
+#import "HaogeTouchFlowExtendedActions.h"
 #import <UIKit/UIKit.h>
 #import <AVFoundation/AVFoundation.h>
 #import <objc/message.h>
@@ -64,6 +65,10 @@ static BOOL haoge_touchflow_media(NSInteger command) {
     return send((unsigned int)command,NULL);
 }
 static BOOL haoge_touchflow_perform(NSString *action,NSString *value) {
+    NSURL *entryURL=haoge_touchflow_actionURL(action);
+    if (entryURL) return haoge_touchflow_openURL(entryURL);
+    if ([action isEqual:@"respring"] || [action isEqual:@"screenRecording"] || [action isEqual:@"kayokoClipboard"])
+        return haoge_touchflow_performExtendedAction(action);
     UIApplication *app = UIApplication.sharedApplication;
     if ([action isEqual:@"controlCenter"]) {
         id controller = haoge_touchflow_singleton(@"SBControlCenterController");
