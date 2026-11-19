@@ -28,12 +28,12 @@
 - (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView { (void)tableView; return 2; }
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
     (void)tableView;
-    return section == 0 ? 1 : (NSInteger)haoge_touchflow_actionCatalog().count + 2;
+    return section == 0 ? 1 : (NSInteger)haoge_touchflow_actionCatalog().count + 1;
 }
 - (NSString *)tableView:(UITableView *)tableView titleForFooterInSection:(NSInteger)section {
     (void)tableView;
-    return section == 0 ? @"在下方选择一种动作。选择快捷面板后，在这里添加面板项目。面板在解锁后显示。"
-        : @"打开应用填写 Bundle ID，快捷指令填写完整名称，链接填写带协议的 URL。";
+    return section == 0 ? @"启用此手势后，在下方只选择一个执行方式。选择快捷面板后，可添加、删除并排序面板动作；锁屏不弹面板。"
+        : @"直接动作支持应用 Bundle ID、快捷指令名称或带协议的 URL。不执行动作会保留系统手势。";
 }
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)path {
     (void)tableView;
@@ -46,13 +46,13 @@
         cell.accessoryView=toggle;cell.selectionStyle=UITableViewCellSelectionStyleNone;return cell;
     }
     if (path.row==0) {
-        cell.textLabel.text=@"直接动作参数";
+        cell.textLabel.text=haoge_touchflow_hasPanelMode(self.haoge_touchflow_binding)?@"快捷面板备用动作":@"直接动作参数";
         NSString *value=[self.haoge_touchflow_binding[@"value"] isKindOfClass:[NSString class]]?self.haoge_touchflow_binding[@"value"]:@"";
-        cell.detailTextLabel.text=value.length?value:@"应用标识／快捷指令名称／完整 URL";
+        cell.detailTextLabel.text=value.length?value:@"Bundle ID／快捷指令名称／完整 URL";
         cell.detailTextLabel.lineBreakMode=NSLineBreakByTruncatingMiddle;cell.accessoryType=UITableViewCellAccessoryDisclosureIndicator;return cell;
     }
     if (path.row==1) {
-        cell.textLabel.text=@"呼出快捷面板";cell.detailTextLabel.text=@"显示此手势配置的动作";
+        cell.textLabel.text=@"呼出快捷面板";cell.detailTextLabel.text=@"使用此手势配置的动作网格";
         if (haoge_touchflow_hasPanelMode(self.haoge_touchflow_binding)) cell.accessoryType=UITableViewCellAccessoryCheckmark;
         return cell;
     }
@@ -80,23 +80,19 @@
 - (void)haoge_touchflow_toggled:(UISwitch *)toggle { [self haoge_touchflow_save:@{@"enabled":@(toggle.on)}]; }
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)path {
     [tableView deselectRowAtIndexPath:path animated:YES];
-    if (path.section==1 && path.row==0) { [self haoge_touchflow_editDirectValue];return; }
-    if (path.section==1 && path.row==1) {
-        BOOL selectingPanel=!haoge_touchflow_hasPanelMode(self.haoge_touchflow_binding);
-        if (selectingPanel && !haoge_touchflow_panelItems(self.haoge_touchflow_binding[@"panelItems"]).count) {
+    if (path.section!=1) return;
+    if (path.row==0) { [self haoge_touchflow_editDirectValue]; return; }
+    if (path.row==1) {
+        if (!haoge_touchflow_panelItems(self.haoge_touchflow_binding[@"panelItems"]).count) {
             UIAlertController *alert=[UIAlertController alertControllerWithTitle:@"先配置面板动作" message:@"至少添加一个动作后才能选择快捷面板。" preferredStyle:UIAlertControllerStyleAlert];
             [alert addAction:[UIAlertAction actionWithTitle:@"稍后" style:UIAlertActionStyleCancel handler:nil]];
             [alert addAction:[UIAlertAction actionWithTitle:@"配置动作" style:UIAlertActionStyleDefault handler:^(UIAlertAction *a){(void)a;[self haoge_touchflow_editPanelItems];}]];
             [self presentViewController:alert animated:YES completion:nil];return;
         }
-        [self haoge_touchflow_save:@{@"mode":selectingPanel?@"panel":@"direct"}];return;
+        [self haoge_touchflow_save:@{@"mode":@"panel"}];return;
     }
-    if (path.section==1 && path.row>=2) {
-        NSDictionary *action=haoge_touchflow_actionCatalog()[(NSUInteger)path.row-2];
-        if ([self haoge_touchflow_save:@{@"mode":@"direct",@"action":action[@"identifier"]}] && [action[@"needsValue"] boolValue]) [self haoge_touchflow_editDirectValue];
-        return;
-    }
-    if (path.section==0 && path.row==1) [self haoge_touchflow_editPanelItems];
+    NSDictionary *action=haoge_touchflow_actionCatalog()[(NSUInteger)path.row-1];
+    if ([self haoge_touchflow_save:@{@"mode":@"direct",@"action":action[@"identifier"]}] && [action[@"needsValue"] boolValue]) [self haoge_touchflow_editDirectValue];
 }
 - (void)haoge_touchflow_editPanelItems {
     [self.navigationController pushViewController:[HaogeTouchFlowPanelItemsController haoge_touchflow_controllerWithTrigger:self.haoge_touchflow_trigger] animated:YES];
