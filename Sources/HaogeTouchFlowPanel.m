@@ -59,14 +59,14 @@ static UIWindowScene *haoge_touchflow_applicationScene(UIWindowScene *sourceScen
 @interface HaogeTouchFlowPanelWindow : UIWindow
 @end
 @implementation HaogeTouchFlowPanelWindow
-- (BOOL)canBecomeKeyWindow { return NO; }
+- (BOOL)canBecomeKeyWindow { return YES; }
 @end
 // The original OneStepX panel window subclasses SpringBoard's SBFTouchPassThroughWindow,
 // which keeps receiving touches even while a third-party app is foreground. A plain
 // UIWindow owned by the SpringBoard process stops being hit-tested once an app is
 // active, so outside taps never reach the dimmer inside apps. Recreate that subclass
 // at runtime because the private class is not available to link.
-static BOOL haoge_touchflow_panelWindowCanKey(id self, SEL _cmd) { (void)self;(void)_cmd;return NO; }
+static BOOL haoge_touchflow_panelWindowCanKey(id self, SEL _cmd) { (void)self;(void)_cmd;return YES; }
 static UIView *haoge_touchflow_panelWindowHitTest(id self, SEL _cmd, CGPoint point, UIEvent *event) {
     UIWindow *window=(UIWindow *)self;
     if (window.hidden || window.alpha<=0.01 || !window.userInteractionEnabled) return nil;
@@ -267,6 +267,7 @@ static void haoge_touchflow_panelLockChanged(CFNotificationCenterRef center,void
     [self haoge_touchflow_dismiss];
 }
 - (BOOL)haoge_touchflow_isVisible { return self.haoge_touchflow_window!=nil; }
+- (UIWindow *)haoge_touchflow_panelWindow { return self.haoge_touchflow_window; }
 - (void)haoge_touchflow_showBinding:(NSDictionary *)binding trigger:(NSString *)trigger scene:(UIWindowScene *)scene sourceWindow:(UIWindow *)sourceWindow {
     NSAssert(NSThread.isMainThread,@"Panel UI must run on main");
     NSDictionary *snapshot=[[HaogeTouchFlowConfig haoge_touchflow_shared] haoge_touchflow_snapshot];
@@ -312,7 +313,10 @@ static void haoge_touchflow_panelLockChanged(CFNotificationCenterRef center,void
     window.rootViewController = controller;
     self.haoge_touchflow_window = window;
     self.haoge_touchflow_controller = controller;
+    // Becomes key like the reference plugin so the panel window itself receives
+    // touches even while a third-party app is foreground.
     window.hidden = NO;
+    [window makeKeyAndVisible];
     // Some SpringBoard scenes deliver appearance callbacks a run-loop turn later.
     dispatch_async(dispatch_get_main_queue(), ^{
         if (self.haoge_touchflow_window != window || self.haoge_touchflow_dismissing) return;
@@ -343,6 +347,19 @@ static void haoge_touchflow_panelLockChanged(CFNotificationCenterRef center,void
     }];
 }
 - (void)haoge_touchflow_dismiss { [self haoge_touchflow_closeWithCompletion:nil]; }
+- (BOOL)haoge_touchflow_handleOutsideTapInWindow:(UIWindow *)window point:(CGPoint)point {
+    if (!window || !self.haoge_touchflow_window || !self.haoge_touchflow_controller) return NO;
+    HaogeTouchFlowPanelController *controller=self.haoge_touchflow_controller;
+    UIView *root=controller.view;
+    if (!root || !controller.haoge_touchflow_sheet) return NO;
+    // The tapped window and the panel window are siblings; route through screen
+    // coordinates so the comparison stays exact across scenes and orientations.
+    CGPoint local=[root convertPoint:[window convertPoint:point toScreen] fromScreen];
+    CGRect sheetFrame=controller.haoge_touchflow_sheet.frame;
+    if (CGRectContainsPoint(sheetFrame,local)) return NO;
+    [self haoge_touchflow_dismiss];
+    return YES;
+}
 - (void)haoge_touchflow_closeWithCompletion:(void (^)(void))completion {
     if (!NSThread.isMainThread) { dispatch_async(dispatch_get_main_queue(), ^{ [self haoge_touchflow_closeWithCompletion:completion]; });return; }
     if (self.haoge_touchflow_dismissing || !self.haoge_touchflow_window) return;

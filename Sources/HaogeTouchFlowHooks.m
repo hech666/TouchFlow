@@ -4,6 +4,7 @@
 #import <substrate.h>
 #import "HaogeTouchFlowGestures.h"
 #import "HaogeTouchFlowConfig.h"
+#import "HaogeTouchFlowPanel.h"
 
 static void (*haoge_touchflow_origWindow)(id,SEL);
 static void (*haoge_touchflow_origAdd)(id,SEL,id,NSInteger);
@@ -11,6 +12,7 @@ static void (*haoge_touchflow_origDesktopWindow)(id,SEL);
 static void (*haoge_touchflow_origDesktopSuperview)(id,SEL);
 static BOOL (*haoge_touchflow_origLockDelegate)(id,SEL,id,id);
 static void (*haoge_touchflow_origStatusPull)(id,SEL,id);
+static UIView *(*haoge_touchflow_origHitTest)(id,SEL,CGPoint,id);
 // Original code proves sender=x2, gesture=x3 and two floating arguments=d0/d1.
 typedef void (*HaogeTouchFlowFluidIMP)(id,SEL,id,double,double,id);
 static HaogeTouchFlowFluidIMP haoge_touchflow_origBegan,haoge_touchflow_origUpdated,haoge_touchflow_origEnded,haoge_touchflow_origCancelled;
@@ -44,6 +46,20 @@ static BOOL haoge_touchflow_lockDelegateHook(id self,SEL cmd,id gesture,id touch
 static void haoge_touchflow_statusPullHook(id self,SEL cmd,id gesture) {
     if (![[HaogeTouchFlowGestures haoge_touchflow_shared] haoge_touchflow_shouldSuppressStatusPull:gesture])
         haoge_touchflow_origStatusPull(self,cmd,gesture);
+}
+// SquidGesturePro-style outside-tap dismissal. When the panel is open, the window
+// that actually receives the touch (the foreground app's key window) decides
+// whether a tap lands outside the sheet. Returning nil hands the tap back to the
+// app instead of letting it activate UI underneath the panel.
+static UIView *haoge_touchflow_hitTestHook(id self,SEL cmd,CGPoint point,id event) {
+    UIView *result = haoge_touchflow_origHitTest(self,cmd,point,event);
+    if (![self isKindOfClass:[UIWindow class]]) return result;
+    UIWindow *window = (UIWindow *)self;
+    HaogeTouchFlowPanel *panel = [HaogeTouchFlowPanel haoge_touchflow_shared];
+    if ([panel haoge_touchflow_isVisible] && window != [panel haoge_touchflow_panelWindow]) {
+        if ([panel haoge_touchflow_handleOutsideTapInWindow:window point:point]) return nil;
+    }
+    return result;
 }
 static void haoge_touchflow_beganHook(id self,SEL cmd,id sender,double distance,double velocity,id gesture) {
     if ([[HaogeTouchFlowGestures haoge_touchflow_shared] haoge_touchflow_claimBottomFromManager:self gesture:gesture]) return;
@@ -83,6 +99,7 @@ void haoge_touchflow_installHooks(void) {
         haoge_touchflow_hook(@"SBRootFolderView",@"didMoveToSuperview",(IMP)haoge_touchflow_desktopSuperviewHook,(IMP *)&haoge_touchflow_origDesktopSuperview,NO);
         haoge_touchflow_hook(@"SBCoverSheetSystemGesturesDelegate",@"gestureRecognizer:shouldReceiveTouch:",(IMP)haoge_touchflow_lockDelegateHook,(IMP *)&haoge_touchflow_origLockDelegate,NO);
         haoge_touchflow_hook(@"SBControlCenterController",@"_handleStatusBarPullDownGesture:",(IMP)haoge_touchflow_statusPullHook,(IMP *)&haoge_touchflow_origStatusPull,NO);
+        haoge_touchflow_hook(@"UIWindow",@"hitTest:withEvent:",(IMP)haoge_touchflow_hitTestHook,(IMP *)&haoge_touchflow_origHitTest,NO);
         NSArray *names = @[@"grabberTongueBeganPulling:withDistance:andVelocity:andGesture:",@"grabberTongueUpdatedPulling:withDistance:andVelocity:andGesture:",@"grabberTongueEndedPulling:withDistance:andVelocity:andGesture:",@"grabberTongueCanceledPulling:withDistance:andVelocity:andGesture:"];
         Class manager = NSClassFromString(@"SBFluidSwitcherGestureManager");
         BOOL complete = manager != Nil;
