@@ -57,7 +57,7 @@ void haoge_touchflow_executeBinding(NSDictionary *binding) {
         [editor loadViewIfNeeded];[editor viewWillAppear:NO];
         NSArray *catalog=haoge_touchflow_actionCatalog();
         [self haoge_touchflow_testCheck:[editor tableView:editor.tableView numberOfRowsInSection:0]==1 message:@"gesture enable section has one row"];
-    [self haoge_touchflow_testCheck:[editor tableView:editor.tableView numberOfRowsInSection:1]==catalog.count+3 message:@"binding section includes value, panel, editor and every action"];
+    [self haoge_touchflow_testCheck:[editor tableView:editor.tableView numberOfRowsInSection:1]==(NSInteger)catalog.count+3 message:@"binding section includes value, panel, editor and every action"];
     for (NSUInteger i=0;i<catalog.count;i++) {
         NSIndexPath *path=[NSIndexPath indexPathForRow:(NSInteger)i+3 inSection:1];
         UITableViewCell *cell=[editor tableView:editor.tableView cellForRowAtIndexPath:path];
@@ -100,7 +100,7 @@ void haoge_touchflow_executeBinding(NSDictionary *binding) {
         [panel haoge_touchflow_showBinding:self.binding trigger:@"statusLeftTap" scene:nil sourceWindow:nil];
         [self haoge_touchflow_testCheck:[panel haoge_touchflow_isVisible] message:@"panel visible via key-window scene fallback"];
         UIWindow *overlay=[panel valueForKey:@"haoge_touchflow_window"];
-        [self.haoge_touchflow_testCheck:![overlay isKeyWindow] message:@"panel must not become key window"];
+        [self haoge_touchflow_testCheck:![overlay isKeyWindow] message:@"panel must not become key window"];
         [self haoge_touchflow_testCheck:overlay.windowLevel==10000011.0 message:@"panel window above SpringBoard status layer"];
         UIViewController *controller=overlay.rootViewController;[controller.view layoutIfNeeded];
         NSArray *buttons=[controller valueForKey:@"haoge_touchflow_buttons"];
@@ -117,7 +117,7 @@ void haoge_touchflow_executeBinding(NSDictionary *binding) {
         UITapGestureRecognizer *outsideTap=nil;
         for (UIGestureRecognizer *recognizer in outsideRecognizers) if ([recognizer isKindOfClass:UITapGestureRecognizer.class]) { outsideTap=(id)recognizer; break; }
         [self haoge_touchflow_testCheck:outsideTap!=nil message:@"outside dismissal tap recognizer is installed"];
-        ((void (*)(id,SEL,id))objc_msgSend)(controller,NSSelectorFromString(@"haoge_touchflow_outsideTapped:"),outsideTap);
+        ((void (*)(id,SEL,UIGestureRecognizer *))objc_msgSend)(controller,NSSelectorFromString(@"haoge_touchflow_outsideTapped:"),outsideTap);
         dispatch_after(dispatch_time(DISPATCH_TIME_NOW,NSEC_PER_SEC),dispatch_get_main_queue(), ^{
             @try {
                 [self haoge_touchflow_testCheck:![panel haoge_touchflow_isVisible] message:@"outside tap closes the panel"];
