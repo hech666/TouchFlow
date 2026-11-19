@@ -352,9 +352,10 @@ static void haoge_touchflow_panelLockChanged(CFNotificationCenterRef center,void
     HaogeTouchFlowPanelController *controller=self.haoge_touchflow_controller;
     UIView *root=controller.view;
     if (!root || !controller.haoge_touchflow_sheet) return NO;
-    // The tapped window and the panel window are siblings; route through screen
-    // coordinates so the comparison stays exact across scenes and orientations.
-    CGPoint local=[root convertPoint:[window convertPoint:point toScreen] fromScreen];
+    // The tapped window and the panel window are siblings. convertPoint:toView:nil
+    // yields window coordinates; fromView:nil interprets them in the panel window's
+    // coordinate space, which stays exact across scenes and orientations.
+    CGPoint local=[root convertPoint:[window convertPoint:point toView:nil] fromView:nil];
     CGRect sheetFrame=controller.haoge_touchflow_sheet.frame;
     if (CGRectContainsPoint(sheetFrame,local)) return NO;
     [self haoge_touchflow_dismiss];
