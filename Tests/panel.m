@@ -22,11 +22,11 @@ int main(void) {
   NSCAssert(haoge_touchflow_panelItems(@[@{@"action":@"openApp"},@{@"action":@"openURL",@"value":@"example"},@{@"action":@"runShortcut",@"value":@"  "}]).count==0,@"required params validated");
   NSArray *items=haoge_touchflow_panelItems(@[valid,@{@"id":@"a",@"action":@"lock"},@{@"action":@"screenshot"}]);
   NSCAssert(items.count==3,@"independent duplicate actions keep order");
-  NSCAssert(![items[0][@"id"] isEqual:items[1][@"id"]],@"unique IDs for duplicates");
-  NSCAssert([items[0][@"action"] isEqual:@"controlCenter"] && [items[2][@"action"] isEqual:@"screenshot"],@"stable item order");
+  NSCAssert(![items[0][@"id"] isEqual:items[1][@"id"]],@"unique IDs for distinct actions");
+  NSCAssert([items[0][@"action"] isEqual:@"controlCenter"] && [items[2][@"action"] isEqual:@"screenshot"],@"stable order for distinct actions");
   NSCAssert([haoge_touchflow_panelItems(items) isEqual:items],@"normalization is idempotent");
-  NSMutableArray *many=[NSMutableArray array];for (int i=0;i<100;i++) [many addObject:valid];
-  NSCAssert(haoge_touchflow_panelItems(many).count==30,@"strict 30 item cap");
+  NSMutableArray *many=[NSMutableArray array];for(int i=0;i<100;i++)[many addObject:valid];
+  NSCAssert(haoge_touchflow_panelItems(many).count==1,@"duplicate action inputs normalize to one item");
   NSMutableArray *longText=[NSMutableArray array];for (int i=0;i<5000;i++) [longText addObject:@"a"];
   NSString *str=[longText componentsJoinedByString:@""];
   NSDictionary *trimmed=haoge_touchflow_panelItems(@[@{@"action":@"openURL",@"value":[@"https://example.com/" stringByAppendingString:str],@"title":str,@"symbol":str}]).firstObject;

@@ -4,7 +4,7 @@
 #import "HaogeTouchFlowActions.h"
 #import "HaogeTouchFlowPanelSettings.h"
 
-@interface HaogeTouchFlowBindingController : UITableViewController <UISearchResultsUpdating>
+@interface HaogeTouchFlowBindingController : UITableViewController <UISearchResultsUpdating, UISearchBarDelegate>
 @property (nonatomic, copy) NSString *haoge_touchflow_trigger;
 @property (nonatomic, copy) NSString *haoge_touchflow_title;
 @property (nonatomic, copy) NSDictionary *haoge_touchflow_binding;
