@@ -77,7 +77,7 @@ static void haoge_touchflow_panelError(UIViewController *controller,NSError *err
 }
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section { (void)tableView;(void)section;return (NSInteger)self.haoge_touchflow_items.count; }
 - (NSString *)tableView:(UITableView *)tableView titleForFooterInSection:(NSInteger)section {
-    (void)tableView;(void)section;return @"使用右上角 ＋ 添加动作；向左滑动即可删除，进入编辑模式可拖动排序。最多 30 项；空面板不会接管手势。";
+    (void)tableView;return @"点击 ＋ 后可勾选多个动作并一次保存；已添加的功能不可重复。带参数的动作请添加后编辑。最多 30 项。";
 }
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)path {
     (void)tableView;NSDictionary *item=self.haoge_touchflow_items[(NSUInteger)path.row];
@@ -100,6 +100,8 @@ static void haoge_touchflow_panelError(UIViewController *controller,NSError *err
     editor.haoge_touchflow_saveBlock=^(NSDictionary *updated) {
         typeof(self) strongSelf=weakSelf;if (!strongSelf) return;
         NSMutableArray *items=[strongSelf.haoge_touchflow_items mutableCopy];NSUInteger found=[items indexOfObjectPassingTest:^BOOL(NSDictionary *row,NSUInteger index,BOOL *stop) {(void)index;(void)stop;return [row[@"id"] isEqual:updated[@"id"]];}];
+        NSUInteger same=[items indexOfObjectPassingTest:^BOOL(NSDictionary *row,NSUInteger index,BOOL *stop) {(void)index;(void)stop;return [row[@"action"] isEqual:updated[@"action"]] && ![row[@"id"] isEqual:updated[@"id"]];}];
+        if(same!=NSNotFound){haoge_touchflow_panelError(weakEditor,[NSError errorWithDomain:HaogeTouchFlowPreferencesDomain code:22 userInfo:@{NSLocalizedDescriptionKey:@"同一个动作只能添加一次。"}]);return;}
         if (found==NSNotFound) { if (items.count>=30) return;[items addObject:updated]; } else items[found]=updated;
         // Save errors must be presented on the visible editor, not its hidden parent.
         NSDictionary *values=haoge_touchflow_readPreferences();id existing=values[HaogeTouchFlowBindingsKey];
@@ -111,8 +113,8 @@ static void haoge_touchflow_panelError(UIViewController *controller,NSError *err
     [self.navigationController pushViewController:editor animated:YES];
 }
 - (void)haoge_touchflow_add {
-    if (self.haoge_touchflow_items.count>=30) return;
-    [self haoge_touchflow_editItem:@{@"id":NSUUID.UUID.UUIDString,@"action":@"controlCenter",@"value":@"",@"title":@"",@"symbol":@""}];
+    HaogeTouchFlowPanelActionPickerController *picker=[HaogeTouchFlowPanelActionPickerController haoge_touchflow_controllerForTrigger:self.haoge_touchflow_trigger existingItems:self.haoge_touchflow_items];
+    [self.navigationController pushViewController:picker animated:YES];
 }
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)path {
     [tableView deselectRowAtIndexPath:path animated:YES];[self haoge_touchflow_editItem:self.haoge_touchflow_items[(NSUInteger)path.row]];
@@ -177,7 +179,7 @@ static void haoge_touchflow_panelError(UIViewController *controller,NSError *err
 - (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView { (void)tableView;return 2; }
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section { (void)tableView;return section==0?2:(NSInteger)haoge_touchflow_panelSettings().count; }
 - (NSString *)tableView:(UITableView *)tableView titleForFooterInSection:(NSInteger)section {
-    (void)tableView;return section==0?@"面板显示后可点外侧、右上角关闭，或从顶部短条下滑关闭。当前面板只在解锁后显示。":@"滑条松手保存；面板高度不会超过可用屏幕，图标过大时会自动适应列宽。所有手势面板共用外观参数。";
+    (void)tableView;return section==0?@"点按 ＋ 后可在动作列表多选并一次保存；已加入的功能隐藏且不可重复。面板没有标题栏、叉号和图标底色；在 App 中使用触发手势对应的前台 scene。":@"滑条松手保存；面板高度不超过可用屏幕，所有手势共用外观参数。";
 }
 - (CGFloat)tableView:(UITableView *)tableView heightForRowAtIndexPath:(NSIndexPath *)path { (void)tableView;return path.section==1?74:48; }
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)path {

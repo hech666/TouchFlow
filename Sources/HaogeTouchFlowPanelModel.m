@@ -5,7 +5,7 @@ BOOL haoge_touchflow_hasPanelMode(NSDictionary *binding) {
 }
 NSArray<NSDictionary *> *haoge_touchflow_panelItems(id input) {
     if (![input isKindOfClass:[NSArray class]]) return @[];
-    NSMutableArray *out=[NSMutableArray array]; NSMutableSet *ids=[NSMutableSet set];
+    NSMutableArray *out=[NSMutableArray array]; NSMutableSet *ids=[NSMutableSet set],*actions=[NSMutableSet set];
     NSSet *keys=[NSSet setWithArray:@[@"id",@"action",@"value",@"title",@"symbol"]];
     for (id row in input) {
         if (![row isKindOfClass:[NSDictionary class]]) continue;
@@ -13,7 +13,7 @@ NSArray<NSDictionary *> *haoge_touchflow_panelItems(id input) {
         BOOL supported=NO;
         for (NSDictionary *entry in haoge_touchflow_actionCatalog())
             if ([entry[@"identifier"] isEqual:action] && ![action isEqual:@"none"]) { supported=YES;break; }
-        if (!supported) continue;
+        if (!supported || [actions containsObject:action]) continue;
         NSMutableDictionary *item=[NSMutableDictionary dictionary];
         for (NSString *key in keys) {
             id value=row[key];
@@ -24,6 +24,7 @@ NSArray<NSDictionary *> *haoge_touchflow_panelItems(id input) {
         if (haoge_touchflow_actionNeedsValue(action) && !value.length) continue;
         if ([action isEqual:@"openURL"] && ![NSURL URLWithString:value].scheme.length) continue;
         if (value) item[@"value"]=value;
+        [actions addObject:action];
         NSString *identity=item[@"id"];
         if (!identity.length || [ids containsObject:identity]) identity=[NSString stringWithFormat:@"item-%lu",(unsigned long)out.count];
         while ([ids containsObject:identity]) identity=[identity stringByAppendingString:@"-"];
@@ -57,7 +58,6 @@ NSArray<NSDictionary *> *haoge_touchflow_panelSettings(void) {
         @{@"key":@"panelTextSize",@"title":@"名称字号",@"default":@11,@"min":@9,@"max":@18,@"step":@1,@"unit":@"pt"},
         @{@"key":@"panelRowHeight",@"title":@"每行高度",@"default":@88,@"min":@64,@"max":@130,@"step":@1,@"unit":@"pt"},
         @{@"key":@"panelCornerRadius",@"title":@"面板圆角",@"default":@30,@"min":@0,@"max":@48,@"step":@1,@"unit":@"pt"},
-        @{@"key":@"panelIconCornerPercent",@"title":@"图标背景圆角",@"default":@55,@"min":@0,@"max":@100,@"step":@1,@"unit":@"%"},
         @{@"key":@"panelDimAlpha",@"title":@"背景变暗程度",@"default":@0.18,@"min":@0,@"max":@0.6,@"step":@0.01,@"unit":@""},
         @{@"key":@"panelOpenDuration",@"title":@"展开动画时长",@"default":@0.28,@"min":@0.1,@"max":@0.8,@"step":@0.01,@"unit":@"秒"},
         @{@"key":@"panelCloseDuration",@"title":@"收起动画时长",@"default":@0.18,@"min":@0.1,@"max":@0.6,@"step":@0.01,@"unit":@"秒"}

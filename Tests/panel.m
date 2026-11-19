@@ -15,6 +15,9 @@ int main(void) {
    NSCAssert(haoge_touchflow_bindingEnabled(@{@"enabled":@YES,@"mode":@"panel",@"panelItems":@[valid]}),@"panel can enable without direct action");
   NSCAssert(!haoge_touchflow_bindingEnabled(@{@"enabled":@NO,@"mode":@"panel",@"panelItems":@[valid]}),@"master binding switch honored");
   NSCAssert(haoge_touchflow_panelItems(@42).count==0,@"invalid list");
+  NSArray *deduped=haoge_touchflow_panelItems(@[@{@"id":@"first",@"action":@"controlCenter"},@{@"id":@"second",@"action":@"controlCenter"},@{@"action":@"lock"}]);
+  NSCAssert(deduped.count==2,@"a panel can contain each action only once");
+  NSCAssert([deduped[0][@"id"] isEqual:@"first"]&&[deduped[1][@"action"] isEqual:@"lock"],@"first valid duplicate wins and order is retained");
   NSCAssert(haoge_touchflow_panelItems(@[@42,NSNull.null,@{},@{@"action":@42},@{@"action":@"none"},@{@"action":@"unknown"}]).count==0,@"bad actions skipped");
   NSCAssert(haoge_touchflow_panelItems(@[@{@"action":@"openApp"},@{@"action":@"openURL",@"value":@"example"},@{@"action":@"runShortcut",@"value":@"  "}]).count==0,@"required params validated");
   NSArray *items=haoge_touchflow_panelItems(@[valid,@{@"id":@"a",@"action":@"lock"},@{@"action":@"screenshot"}]);

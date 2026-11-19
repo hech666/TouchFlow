@@ -43,7 +43,7 @@ void haoge_touchflow_executeBinding(NSDictionary *binding) {
     @try {
         self.window=[[UIWindow alloc] initWithWindowScene:(UIWindowScene *)scene];self.navigation=[[UINavigationController alloc] initWithRootViewController:[UIViewController new]];self.window.rootViewController=self.navigation;[self.window makeKeyAndVisible];
         Class hostClass=NSClassFromString(@"HaogeTouchFlowRootListController");self.host=[hostClass new];[self.navigation setViewControllers:@[self.host] animated:NO];[self.host loadViewIfNeeded];
-        [self haoge_touchflow_testCheck:![self.host respondsToSelector:@selector(tableView)] message:@"mock host must not provide tableView"];
+        [self haoge_touchflow_testCheck:![self.host respondsToSelector:@selector(tableView)] message:@"root host must not expose tableView"];
         [self haoge_touchflow_testCheck:self.host.childViewControllers.count==1 message:@"root creates one UIKit child"];
         UITableViewController *settings=(id)self.host.childViewControllers.firstObject;
         [self haoge_touchflow_testCheck:[settings isKindOfClass:UITableViewController.class] message:@"settings are native table"];
@@ -56,17 +56,20 @@ void haoge_touchflow_executeBinding(NSDictionary *binding) {
         [self.navigation pushViewController:editor animated:NO];
         [editor loadViewIfNeeded];[editor viewWillAppear:NO];
         NSArray *catalog=haoge_touchflow_actionCatalog();
+        NSArray *actionGroups=@[@[@"controlCenter",@"lock",@"appSwitcher",@"respring",@"screenshot",@"screenRecording",@"flashlight"],@[@"kayokoClipboard"],@[@"wechatPay",@"alipayPay",@"wechatScan",@"alipayScan"],@[@"playPause",@"nextTrack",@"previousTrack"],@[@"openApp",@"runShortcut",@"openURL"]];
+        [self haoge_touchflow_testCheck:[editor numberOfSectionsInTableView:editor.tableView]==7 message:@"binding page uses grouped action sections"];
         [self haoge_touchflow_testCheck:[editor tableView:editor.tableView numberOfRowsInSection:0]==1 message:@"gesture enable section has one row"];
-    [self haoge_touchflow_testCheck:[editor tableView:editor.tableView numberOfRowsInSection:1]==(NSInteger)catalog.count+3 message:@"binding section includes value, panel, editor and every action"];
-    for (NSUInteger i=0;i<catalog.count;i++) {
-        NSIndexPath *path=[NSIndexPath indexPathForRow:(NSInteger)i+3 inSection:1];
-        UITableViewCell *cell=[editor tableView:editor.tableView cellForRowAtIndexPath:path];
-        [self haoge_touchflow_testCheck:[cell.textLabel.text isEqual:catalog[i][@"title"]] message:@"action row matches its click index"];
-        NSDictionary *selected=@{@"enabled":@YES,@"mode":@"direct",@"action":catalog[i][@"identifier"]};
-        [editor setValue:selected forKey:@"haoge_touchflow_binding"];
-        cell=[editor tableView:editor.tableView cellForRowAtIndexPath:path];
-        [self haoge_touchflow_testCheck:cell.accessoryType==UITableViewCellAccessoryCheckmark message:@"checkmark appears on the matching action row"];
-    }
+        [self haoge_touchflow_testCheck:[editor tableView:editor.tableView numberOfRowsInSection:1]==3 message:@"execution mode section has three rows"];
+        NSMutableSet *shown=[NSMutableSet set];
+        for(NSInteger section=2;section<7;section++)for(NSInteger row=0;row<[editor tableView:editor.tableView numberOfRowsInSection:section];row++){
+            NSString *identifier=actionGroups[(NSUInteger)section-2][(NSUInteger)row];NSDictionary *entry=nil;
+            for(NSDictionary *candidate in catalog)if([candidate[@"identifier"] isEqual:identifier]){entry=candidate;break;}
+            NSIndexPath *path=[NSIndexPath indexPathForRow:row inSection:section];UITableViewCell *cell=[editor tableView:editor.tableView cellForRowAtIndexPath:path];
+            [self haoge_touchflow_testCheck:entry!=nil&&[cell.textLabel.text isEqual:entry[@"title"]] message:@"grouped action row matches catalog"];
+            [shown addObject:identifier];NSDictionary *selected=@{@"enabled":@YES,@"mode":@"direct",@"action":identifier};[editor setValue:selected forKey:@"haoge_touchflow_binding"];
+            cell=[editor tableView:editor.tableView cellForRowAtIndexPath:path];[self haoge_touchflow_testCheck:cell.accessoryType==UITableViewCellAccessoryCheckmark message:@"selected action checkmark maps to row"];
+        }
+        [self haoge_touchflow_testCheck:shown.count==catalog.count message:@"each action appears in one visual group"];
     [editor setValue:@{@"enabled":@YES,@"mode":@"panel",@"panelItems":@[]} forKey:@"haoge_touchflow_binding"];
     NSIndexPath *panelEditorRow=[NSIndexPath indexPathForRow:2 inSection:1];
     [editor tableView:editor.tableView didSelectRowAtIndexPath:panelEditorRow];
@@ -78,7 +81,17 @@ void haoge_touchflow_executeBinding(NSDictionary *binding) {
     NSDictionary *item=@{@"id":@"test-item",@"action":@"controlCenter",@"value":@"",@"title":@"控制中心",@"symbol":@"switch.2"};
         self.binding=@{@"enabled":@YES,@"mode":@"panel",@"panelItems":@[item]};
         [self haoge_touchflow_testCheck:haoge_touchflow_writePreference(@"bindings",@{@"statusLeftTap":self.binding},NULL) message:@"panel list saves"];
-        [self haoge_touchflow_testCheck:haoge_touchflow_writePreference(@"enabled",@YES,NULL) message:@"global config saves"];
+        HaogeTouchFlowPanelActionPickerController *picker=[HaogeTouchFlowPanelActionPickerController haoge_touchflow_controllerForTrigger:@"statusLeftTap" existingItems:@[item]];
+        [picker loadViewIfNeeded];NSArray *candidates=((id (*)(id,SEL))objc_msgSend)(picker,NSSelectorFromString(@"haoge_touchflow_candidates"));
+        [self haoge_touchflow_testCheck:[candidates indexOfObjectPassingTest:^BOOL(NSDictionary *row,NSUInteger index,BOOL *stop){(void)index;(void)stop;return [row[@"identifier"] isEqual:@"controlCenter"];}]==NSNotFound message:@"already-added action is excluded from add list"];
+        NSArray *batch=@[@"lock",@"respring"];
+        for(NSString *identifier in batch){NSUInteger row=[candidates indexOfObjectPassingTest:^BOOL(NSDictionary *entry,NSUInteger index,BOOL *stop){(void)index;(void)stop;return [entry[@"identifier"] isEqual:identifier];}];[self haoge_touchflow_testCheck:row!=NSNotFound message:@"multi-add candidate exists"];[picker tableView:picker.tableView didSelectRowAtIndexPath:[NSIndexPath indexPathForRow:(NSInteger)row inSection:0]];}
+        [self haoge_touchflow_testCheck:[[picker valueForKey:@"haoge_touchflow_selectedIDs"] count]==2 message:@"multiple actions are checked together"];
+        ((void (*)(id,SEL))objc_msgSend)(picker,NSSelectorFromString(@"haoge_touchflow_saveSelection"));
+        NSArray *savedItems=haoge_touchflow_panelItems(haoge_touchflow_binding(haoge_touchflow_readPreferences(),@"statusLeftTap")[@"panelItems"]);
+        [self haoge_touchflow_testCheck:savedItems.count==3 message:@"batch save adds both selected functions"];
+        [self haoge_touchflow_testCheck:[NSSet setWithArray:[savedItems valueForKey:@"action"]].count==3 message:@"panel item actions remain unique"];
+        [self haoge_touchflow_testCheck:haoge_touchflow_writePreference(@"bindings",@{@"statusLeftTap":self.binding},NULL) message:@"restore panel test fixture after batch save"];
         // Assert editable metadata remains mutable after property assignment.
         Class itemClass=NSClassFromString(@"HaogeTouchFlowPanelItemEditor");UIViewController *itemEditor=[itemClass new];
         [itemEditor setValue:[item mutableCopy] forKey:@"haoge_touchflow_item"];
@@ -100,11 +113,16 @@ void haoge_touchflow_executeBinding(NSDictionary *binding) {
         [panel haoge_touchflow_showBinding:self.binding trigger:@"statusLeftTap" scene:nil sourceWindow:nil];
         [self haoge_touchflow_testCheck:[panel haoge_touchflow_isVisible] message:@"panel visible via key-window scene fallback"];
         UIWindow *overlay=[panel valueForKey:@"haoge_touchflow_window"];
-        [self haoge_touchflow_testCheck:![overlay isKeyWindow] message:@"panel must not become key window"];
+        [self haoge_touchflow_testCheck:[overlay isKindOfClass:NSClassFromString(@"HaogeTouchFlowPanelWindow")] message:@"ordinary non-key overlay receives app-scene touches"];
+        [self haoge_touchflow_testCheck:![overlay.rootViewController respondsToSelector:NSSelectorFromString(@"haoge_touchflow_heading")] message:@"panel title removed"];
+        [self haoge_touchflow_testCheck:![overlay.rootViewController respondsToSelector:NSSelectorFromString(@"haoge_touchflow_closeButton")] message:@"corner close button removed"];
         [self haoge_touchflow_testCheck:overlay.windowLevel==10000011.0 message:@"panel window above SpringBoard status layer"];
+        [self haoge_touchflow_testCheck:![[haoge_touchflow_panelSettings() valueForKey:@"key"] containsObject:@"panelIconCornerPercent"] message:@"icon background radius setting removed"];
         UIViewController *controller=overlay.rootViewController;[controller.view layoutIfNeeded];
         NSArray *buttons=[controller valueForKey:@"haoge_touchflow_buttons"];
+        NSArray *icons=[controller valueForKey:@"haoge_touchflow_icons"];
         [self haoge_touchflow_testCheck:buttons.count==1 message:@"one configured action creates one button"];
+        [self haoge_touchflow_testCheck:icons.count==buttons.count&&[[icons.firstObject backgroundColor] isEqual:UIColor.clearColor] message:@"action icon has no background fill"];
         UIView *sheet=[controller valueForKey:@"haoge_touchflow_sheet"];
         [self haoge_touchflow_testCheck:CGRectGetMaxY(sheet.frame)<=CGRectGetHeight(overlay.bounds) && CGRectGetMinY(sheet.frame)>=0 message:@"panel fits scene bounds"];
         SEL outsideCheck=NSSelectorFromString(@"haoge_touchflow_shouldDismissForPoint:");
