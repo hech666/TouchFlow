@@ -20,26 +20,21 @@ typedef enum {
     HaogeTouchFlowBottomNone = 0, HaogeTouchFlowBottomNear, HaogeTouchFlowBottomFar
 } HaogeTouchFlowBottomBand;
 
-typedef struct {
-    HaogeTouchFlowBottomBand band;
-    double x, y, since;
-} HaogeTouchFlowBottomHold;
+// The higher threshold wins if both are met, including equal thresholds.
+static inline HaogeTouchFlowBottomBand haoge_touchflow_bottomBand(
+        double dx, double dy, double nearDistance, double farDistance) {
+    if (haoge_touchflow_upward(dx,dy,farDistance)) return HaogeTouchFlowBottomFar;
+    if (haoge_touchflow_upward(dx,dy,nearDistance)) return HaogeTouchFlowBottomNear;
+    return HaogeTouchFlowBottomNone;
+}
 
-// Sample on movement and once on release. Crossing a band boundary or moving
-// more than 8 pt from the hold anchor restarts the dwell. No timer can fire early.
-static inline HaogeTouchFlowBottomBand haoge_touchflow_bottomSample(HaogeTouchFlowBottomHold *hold,
-        double dx, double dy, double nearDistance, double farDistance, double now, int released) {
-    HaogeTouchFlowBottomBand band = haoge_touchflow_upward(dx,dy,farDistance) ? HaogeTouchFlowBottomFar :
-        (haoge_touchflow_upward(dx,dy,nearDistance) ? HaogeTouchFlowBottomNear : HaogeTouchFlowBottomNone);
-    if (!isfinite(now) || band == HaogeTouchFlowBottomNone) {
-        hold->band = HaogeTouchFlowBottomNone;
-        return HaogeTouchFlowBottomNone;
-    }
-    double x = dx - hold->x, y = dy - hold->y;
-    if (band != hold->band || x*x+y*y > 64 || now < hold->since) {
-        hold->band = band; hold->x = dx; hold->y = dy; hold->since = now;
-    }
-    return released && now >= hold->since + 0.18 ? band : HaogeTouchFlowBottomNone;
+// Remain quiet for consecutive samples in the same band. Returning to a
+// different band is a new cue because it changes what release would do.
+static inline int haoge_touchflow_bottomEnterBand(HaogeTouchFlowBottomBand *previous,
+        HaogeTouchFlowBottomBand current) {
+    int changed = *previous != current;
+    *previous = current;
+    return changed && current != HaogeTouchFlowBottomNone;
 }
 static inline int haoge_touchflow_horizontal(double dx, double dy, double distance) {
     return isfinite(dx) && isfinite(dy) && isfinite(distance) && distance > 0 &&

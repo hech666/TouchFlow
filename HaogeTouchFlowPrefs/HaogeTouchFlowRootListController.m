@@ -26,7 +26,7 @@
 - (NSString *)tableView:(UITableView *)tableView titleForFooterInSection:(NSInteger)section {
     (void)tableView;
     if (section==0) return @"安装后默认关闭。先停用其他同区域手势插件，再开启本插件。";
-    if (section==3) return @"启用某侧第二档后，解锁竖屏时上滑到对应距离，停约 0.18 秒再松手，只执行一档，达到第二档距离时优先执行第二档。未启用第二档时维持原触发方式。底部中间保留系统手势；桌面长按只识别空白区域。";
+    if (section==3) return @"启用某侧第二档后，解锁竖屏时滑到对应距离就轻振，松手执行当前档位，无需停留。继续滑到第二档会再轻振一次。未启用第二档时维持原触发方式。底部中间保留系统手势；桌面长按只识别空白区域。";
     if (section==4) return @"默认不在锁屏执行动作。开启后系统仍要求解锁受保护内容。设置保存后自动生效。";
     if (section==5) return @"可调整触发区域和距离。首次安装后需由包管理器重新载入 SpringBoard；以后改设置不用注销。";
     return nil;
@@ -45,7 +45,7 @@
     }
     if (path.section==0 || path.section==4) {
         NSString *key=path.section==0?@"enabled":(path.row==0?@"haptics":@"allowLocked");
-        cell.textLabel.text=path.section==0?@"启用轻触手势":(path.row==0?@"触发时轻振":@"允许锁屏时执行");
+        cell.textLabel.text=path.section==0?@"启用轻触手势":(path.row==0?@"手势轻振提示":@"允许锁屏时执行");
         UISwitch *toggle=[UISwitch new]; toggle.accessibilityIdentifier=key;
         id value=self.haoge_touchflow_values[key]; toggle.on=[value isKindOfClass:[NSNumber class]]?[value boolValue]:[key isEqual:@"haptics"];
         [toggle addTarget:self action:@selector(haoge_touchflow_toggled:) forControlEvents:UIControlEventValueChanged];

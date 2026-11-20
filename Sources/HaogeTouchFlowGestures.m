@@ -8,11 +8,10 @@
 #import "HaogeTouchFlowGeometry.h"
 #import <objc/message.h>
 #import <objc/runtime.h>
-#import <QuartzCore/QuartzCore.h>
 
 @interface HaogeTouchFlowBottomSession : NSObject {
 @public
-    HaogeTouchFlowBottomHold haoge_touchflow_hold;
+    HaogeTouchFlowBottomBand haoge_touchflow_band;
 }
 @property (nonatomic, copy) NSString *haoge_touchflow_trigger;
 @property (nonatomic, copy) NSString *haoge_touchflow_farTrigger;
@@ -67,6 +66,7 @@ static BOOL haoge_touchflow_locked(void) {
 - (NSString *)haoge_touchflow_bottomTriggerForPoint:(CGPoint)point view:(UIView *)view;
 - (double)haoge_touchflow_number:(NSString *)key fallback:(double)fallback min:(double)lo max:(double)hi;
 - (void)haoge_touchflow_fire:(NSString *)trigger view:(UIView *)view;
+- (void)haoge_touchflow_fire:(NSString *)trigger view:(UIView *)view withFeedback:(BOOL)feedback;
 - (void)haoge_touchflow_refresh;
 - (void)haoge_touchflow_recognized:(HaogeTouchFlowBindingRecognizer *)recognizer;
 - (void)haoge_touchflow_desktopPressed:(UILongPressGestureRecognizer *)recognizer;
@@ -212,13 +212,20 @@ static BOOL haoge_touchflow_holdBindingReady(NSDictionary *binding) {
     }
     return NO;
 }
+static BOOL haoge_touchflow_hapticsEnabled(NSDictionary *snapshot) {
+    id haptics = snapshot[@"haptics"];
+    return !haptics || ([haptics isKindOfClass:[NSNumber class]] && [haptics boolValue]);
+}
 - (void)haoge_touchflow_fire:(NSString *)trigger view:(UIView *)view {
+    [self haoge_touchflow_fire:trigger view:view withFeedback:YES];
+}
+- (void)haoge_touchflow_fire:(NSString *)trigger view:(UIView *)view withFeedback:(BOOL)feedback {
     NSAssert(NSThread.isMainThread,@"TouchFlow gestures run on main");
     if (![self haoge_touchflow_enabledTrigger:trigger]) return;
-    NSDictionary *binding=haoge_touchflow_binding([self haoge_touchflow_snapshot],trigger);
+    NSDictionary *snapshot = [self haoge_touchflow_snapshot];
+    NSDictionary *binding = haoge_touchflow_binding(snapshot,trigger);
     if (haoge_touchflow_hasPanelMode(binding) && haoge_touchflow_locked()) return;
-    id haptics = [self haoge_touchflow_snapshot][@"haptics"];
-    if (!haptics || ([haptics isKindOfClass:[NSNumber class]] && [haptics boolValue])) [self.haoge_touchflow_feedback impactOccurred];
+    if (feedback && haoge_touchflow_hapticsEnabled(snapshot)) [self.haoge_touchflow_feedback impactOccurred];
     if (haoge_touchflow_hasPanelMode(binding)) {
         __weak UIWindow *sourceWindow = view.window;
         dispatch_async(dispatch_get_main_queue(), ^{
@@ -417,18 +424,23 @@ static BOOL haoge_touchflow_holdBindingReady(NSDictionary *binding) {
             return YES;
         }
         CGPoint translation = [(UIPanGestureRecognizer *)gesture translationInView:view];
-        HaogeTouchFlowBottomBand band = haoge_touchflow_bottomSample(&session->haoge_touchflow_hold,
-            translation.x,translation.y,session.haoge_touchflow_nearDistance,session.haoge_touchflow_farDistance,
-            CACurrentMediaTime(),ended);
+        HaogeTouchFlowBottomBand band = haoge_touchflow_bottomBand(translation.x,translation.y,
+            session.haoge_touchflow_nearDistance,session.haoge_touchflow_farDistance);
         NSString *trigger = band == HaogeTouchFlowBottomFar ? session.haoge_touchflow_farTrigger :
             (band == HaogeTouchFlowBottomNear && session.haoge_touchflow_nearEnabled ? session.haoge_touchflow_trigger : nil);
+        if (!ended) {
+            BOOL entered = haoge_touchflow_bottomEnterBand(&session->haoge_touchflow_band,
+                trigger ? band : HaogeTouchFlowBottomNone);
+            if (entered && haoge_touchflow_hapticsEnabled(snapshot)) [self.haoge_touchflow_feedback impactOccurred];
+            return YES;
+        }
         if (trigger) {
             __weak UIView *weakView = view;
             dispatch_async(dispatch_get_main_queue(), ^{
                 UIView *currentView = weakView;
                 if (!currentView || [self haoge_touchflow_snapshot] != snapshot || haoge_touchflow_locked() ||
                     [[HaogeTouchFlowPanel haoge_touchflow_shared] haoge_touchflow_isVisible]) return;
-                [self haoge_touchflow_fire:trigger view:currentView];
+                [self haoge_touchflow_fire:trigger view:currentView withFeedback:NO];
             });
         }
         return YES;

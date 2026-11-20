@@ -2,13 +2,8 @@
 #include <stdio.h>
 #include "../Sources/HaogeTouchFlowGeometry.h"
 
-static HaogeTouchFlowBottomBand haoge_touchflow_sample120_200(HaogeTouchFlowBottomHold *hold,
-        double dx, double dy, double now, int released) {
-    return haoge_touchflow_bottomSample(hold,dx,dy,120,200,now,released);
-}
-
 int main(void) {
-    // Boundary touches must stay with the system center, not reserve both sides.
+    // Boundary touches stay with the system center.
     assert(haoge_touchflow_side(0,400,25)==-1);
     assert(haoge_touchflow_side(99,400,25)==-1);
     assert(haoge_touchflow_side(100,400,25)==0);
@@ -34,43 +29,32 @@ int main(void) {
     assert(haoge_touchflow_finiteClamp(NAN,25,10,33)==25);
     assert(haoge_touchflow_finiteClamp(99,25,10,33)==33);
     assert(haoge_touchflow_finiteClamp(-1,25,10,33)==10);
-    HaogeTouchFlowBottomHold hold = {0};
-    assert(haoge_touchflow_sample120_200(&hold,0,-119.9,1.0,0)==HaogeTouchFlowBottomNone);
-    assert(hold.band==HaogeTouchFlowBottomNone);
-    assert(haoge_touchflow_sample120_200(&hold,0,-120,2.0,0)==HaogeTouchFlowBottomNone);
-    assert(haoge_touchflow_sample120_200(&hold,0,-120,2.179,1)==HaogeTouchFlowBottomNone);
-    assert(haoge_touchflow_sample120_200(&hold,0,-120,2.18,1)==HaogeTouchFlowBottomNear);
-    hold = (HaogeTouchFlowBottomHold){0};
-    assert(haoge_touchflow_sample120_200(&hold,0,-195,3.0,0)==HaogeTouchFlowBottomNone);
-    assert(haoge_touchflow_sample120_200(&hold,0,-199.9,3.2,0)==HaogeTouchFlowBottomNone);
-    assert(haoge_touchflow_sample120_200(&hold,0,-200,3.22,0)==HaogeTouchFlowBottomNone);
-    assert(hold.band==HaogeTouchFlowBottomFar);
-    assert(haoge_touchflow_sample120_200(&hold,0,-200,3.31,1)==HaogeTouchFlowBottomNone);
-    assert(haoge_touchflow_sample120_200(&hold,0,-206,3.22+0.18,1)==HaogeTouchFlowBottomFar);
-    assert(haoge_touchflow_sample120_200(&hold,0,-199,3.5,1)==HaogeTouchFlowBottomNone);
-    assert(haoge_touchflow_sample120_200(&hold,0,-199,3.7,1)==HaogeTouchFlowBottomNear);
-    hold = (HaogeTouchFlowBottomHold){0};
-    assert(haoge_touchflow_sample120_200(&hold,0,-210,4.0,0)==HaogeTouchFlowBottomNone);
-    assert(haoge_touchflow_sample120_200(&hold,4,-219,4.4,1)==HaogeTouchFlowBottomNone);
-    assert(haoge_touchflow_sample120_200(&hold,0,-110,4.6,1)==HaogeTouchFlowBottomNone);
-    assert(haoge_touchflow_sample120_200(&hold,200,-210,4.7,1)==HaogeTouchFlowBottomNone);
-    assert(haoge_touchflow_sample120_200(&hold,NAN,-220,5.0,1)==HaogeTouchFlowBottomNone);
-    assert(haoge_touchflow_sample120_200(&hold,0,-220,NAN,1)==HaogeTouchFlowBottomNone);
-    assert(haoge_touchflow_sample120_200(&hold,0,-220,6.0,1)==HaogeTouchFlowBottomNone);
-    hold = (HaogeTouchFlowBottomHold){0};
-    assert(haoge_touchflow_bottomSample(&hold,0,-59.9,60,280,7.0,0)==HaogeTouchFlowBottomNone);
-    assert(hold.band==HaogeTouchFlowBottomNone);
-    assert(haoge_touchflow_bottomSample(&hold,0,-60,60,280,7.1,0)==HaogeTouchFlowBottomNone);
-    assert(haoge_touchflow_bottomSample(&hold,0,-60,60,280,7.3,1)==HaogeTouchFlowBottomNear);
-    hold = (HaogeTouchFlowBottomHold){0};
-    assert(haoge_touchflow_bottomSample(&hold,0,-279.9,180,280,8.0,0)==HaogeTouchFlowBottomNone);
-    assert(hold.band==HaogeTouchFlowBottomNear);
-    assert(haoge_touchflow_bottomSample(&hold,0,-280,180,280,8.1,0)==HaogeTouchFlowBottomNone);
-    assert(haoge_touchflow_bottomSample(&hold,0,-300,180,280,8.4,0)==HaogeTouchFlowBottomNone);
-    assert(haoge_touchflow_bottomSample(&hold,0,-300,180,280,8.6,1)==HaogeTouchFlowBottomFar);
-    hold = (HaogeTouchFlowBottomHold){0};
-    assert(haoge_touchflow_bottomSample(&hold,0,-200,200,200,9.0,0)==HaogeTouchFlowBottomNone);
-    assert(haoge_touchflow_bottomSample(&hold,0,-200,200,200,9.2,1)==HaogeTouchFlowBottomFar);
-    printf("PASS geometry and configurable two-stage bottom hold/release checks\n");
+
+    assert(haoge_touchflow_bottomBand(0,-119.9,120,200)==HaogeTouchFlowBottomNone);
+    assert(haoge_touchflow_bottomBand(0,-120,120,200)==HaogeTouchFlowBottomNear);
+    assert(haoge_touchflow_bottomBand(0,-199.9,120,200)==HaogeTouchFlowBottomNear);
+    assert(haoge_touchflow_bottomBand(0,-200,120,200)==HaogeTouchFlowBottomFar);
+    assert(haoge_touchflow_bottomBand(0,-59.9,60,280)==HaogeTouchFlowBottomNone);
+    assert(haoge_touchflow_bottomBand(0,-60,60,280)==HaogeTouchFlowBottomNear);
+    assert(haoge_touchflow_bottomBand(0,-279.9,180,280)==HaogeTouchFlowBottomNear);
+    assert(haoge_touchflow_bottomBand(0,-280,180,280)==HaogeTouchFlowBottomFar);
+    assert(haoge_touchflow_bottomBand(0,-300,180,280)==HaogeTouchFlowBottomFar);
+    assert(haoge_touchflow_bottomBand(0,-200,200,200)==HaogeTouchFlowBottomFar);
+    assert(haoge_touchflow_bottomBand(200,-210,120,200)==HaogeTouchFlowBottomNone);
+    assert(haoge_touchflow_bottomBand(0,210,120,200)==HaogeTouchFlowBottomNone);
+    assert(haoge_touchflow_bottomBand(NAN,-220,120,200)==HaogeTouchFlowBottomNone);
+
+    // A new valid band gives one cue. Further movement in it stays quiet.
+    HaogeTouchFlowBottomBand previous = HaogeTouchFlowBottomNone;
+    assert(!haoge_touchflow_bottomEnterBand(&previous,HaogeTouchFlowBottomNone));
+    assert(haoge_touchflow_bottomEnterBand(&previous,HaogeTouchFlowBottomNear));
+    assert(!haoge_touchflow_bottomEnterBand(&previous,HaogeTouchFlowBottomNear));
+    assert(haoge_touchflow_bottomEnterBand(&previous,HaogeTouchFlowBottomFar));
+    assert(!haoge_touchflow_bottomEnterBand(&previous,HaogeTouchFlowBottomFar));
+    assert(haoge_touchflow_bottomEnterBand(&previous,HaogeTouchFlowBottomNear));
+    assert(!haoge_touchflow_bottomEnterBand(&previous,HaogeTouchFlowBottomNone));
+    assert(previous==HaogeTouchFlowBottomNone);
+    assert(haoge_touchflow_bottomEnterBand(&previous,HaogeTouchFlowBottomFar));
+    printf("PASS geometry, two-stage threshold and haptic transition checks\n");
     return 0;
 }
