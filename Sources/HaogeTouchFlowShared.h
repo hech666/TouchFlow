@@ -17,7 +17,7 @@ static inline NSArray<NSString *> *haoge_touchflow_triggerTitles(void) {
              @"状态栏右侧右滑", @"底部左侧上滑", @"左侧上滑 · 第二档", @"底部右侧上滑", @"右侧上滑 · 第二档", @"桌面空白处长按"];
 }
 // Dictionary schema: bindings[triggerID] = { enabled: BOOL, action: NSString, value: NSString }.
-// Global keys: enabled=NO, hapticLevel=2 (0=off,1=low,2=medium,3=high), allowLocked=NO, bottomDistance=110,
+// Global keys: enabled=NO, hapticLevelV2=1 (0=off,1=low,2=medium,3=high), allowLocked=NO, bottomDistance=110,
 // statusDistance=60, sidePercent=25 (10..33), longPressDuration=0.55 (0.35..1.2).
 // "none" never reserves a gesture. Every module must treat malformed dictionaries as disabled.
 static inline NSDictionary *haoge_touchflow_binding(NSDictionary *snapshot, NSString *trigger) {

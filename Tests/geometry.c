@@ -56,10 +56,14 @@ int main(void) {
     assert(previous==HaogeTouchFlowBottomNone);
     assert(haoge_touchflow_bottomEnterBand(&previous,HaogeTouchFlowBottomFar));
     assert(haoge_touchflow_hapticIntensityForLevel(0)==0.0);
-    assert(haoge_touchflow_hapticIntensityForLevel(1)==0.35);
-    assert(haoge_touchflow_hapticIntensityForLevel(2)==0.65);
+    assert(haoge_touchflow_hapticIntensityForLevel(1)==0.8);
+    assert(haoge_touchflow_hapticIntensityForLevel(2)==1.0);
     assert(haoge_touchflow_hapticIntensityForLevel(3)==1.0);
-    assert(haoge_touchflow_hapticIntensityForLevel(99)==0.65);
-    printf("PASS geometry, two-stage thresholds, cue transitions and four haptic levels\n");
+    assert(haoge_touchflow_hapticLevelFromLegacy(0)==0);
+    assert(haoge_touchflow_hapticLevelFromLegacy(1)==1);
+    assert(haoge_touchflow_hapticLevelFromLegacy(2)==1);
+    assert(haoge_touchflow_hapticLevelFromLegacy(3)==2);
+    assert(haoge_touchflow_hapticLevelFromLegacy(99)==1);
+    printf("PASS geometry, tier cues, legacy migration and stronger haptics\n");
     return 0;
 }

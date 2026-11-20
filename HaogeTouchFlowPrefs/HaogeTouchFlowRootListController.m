@@ -39,14 +39,16 @@
              @{@"key":@"longPressDuration",@"title":@"长按触发时间",@"default":@0.55,@"min":@0.35,@"max":@1.2,@"suffix":@" 秒"}][(NSUInteger)row];
 }
 - (NSInteger)haoge_touchflow_hapticLevel {
-    id value=self.haoge_touchflow_values[@"hapticLevel"];
+    id value=self.haoge_touchflow_values[@"hapticLevelV2"];
     if ([value isKindOfClass:[NSNumber class]]) return MAX(0,MIN(3,[value integerValue]));
+    value=self.haoge_touchflow_values[@"hapticLevel"];
+    if ([value isKindOfClass:[NSNumber class]]) return haoge_touchflow_hapticLevelFromLegacy((int)[value integerValue]);
     id percentage=self.haoge_touchflow_values[@"hapticIntensity"];
     if ([percentage isKindOfClass:[NSNumber class]]) {
-        double p=[percentage doubleValue]; return p<=0?0:(p<50?1:(p<85?2:3));
+        double p=[percentage doubleValue]; return p<=0?0:(p<85?1:2);
     }
     id legacy=self.haoge_touchflow_values[@"haptics"];
-    return ([legacy isKindOfClass:[NSNumber class]] && ![legacy boolValue])?0:2;
+    return ([legacy isKindOfClass:[NSNumber class]] && ![legacy boolValue])?0:1;
 }
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)path {
     (void)tableView; UITableViewCell *cell=[[UITableViewCell alloc] initWithStyle:UITableViewCellStyleValue1 reuseIdentifier:nil];
@@ -63,7 +65,7 @@
         cell.textLabel.text=@"震动大小调节";
         UISegmentedControl *levels=[[UISegmentedControl alloc] initWithItems:@[@"关闭",@"弱",@"中",@"强"]];
         levels.frame=CGRectMake(0,0,230,32); levels.selectedSegmentIndex=[self haoge_touchflow_hapticLevel];
-        levels.accessibilityLabel=@"震动大小调节"; levels.accessibilityIdentifier=@"hapticLevel";
+        levels.accessibilityLabel=@"震动大小调节"; levels.accessibilityIdentifier=@"hapticLevelV2";
         [levels addTarget:self action:@selector(haoge_touchflow_hapticLevelChanged:) forControlEvents:UIControlEventValueChanged];
         cell.accessoryView=levels; cell.selectionStyle=UITableViewCellSelectionStyleNone;
     } else if (path.section==4) {
@@ -95,7 +97,7 @@
 }
 - (void)haoge_touchflow_toggled:(UISwitch *)toggle { [self haoge_touchflow_save:toggle.accessibilityIdentifier value:@(toggle.on)]; }
 - (void)haoge_touchflow_hapticLevelChanged:(UISegmentedControl *)control {
-    [self haoge_touchflow_save:@"hapticLevel" value:@(control.selectedSegmentIndex)];
+    [self haoge_touchflow_save:@"hapticLevelV2" value:@(control.selectedSegmentIndex)];
 }
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)path {
     [tableView deselectRowAtIndexPath:path animated:YES];
