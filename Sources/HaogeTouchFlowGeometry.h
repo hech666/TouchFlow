@@ -11,6 +11,31 @@ static inline int haoge_touchflow_upward(double dx, double dy, double distance) 
     return isfinite(dx) && isfinite(dy) && isfinite(distance) && distance > 0 &&
            -dy >= distance && -dy > fabs(dx) * 1.15;
 }
+typedef enum {
+    HaogeTouchFlowBottomNone = 0, HaogeTouchFlowBottomNear, HaogeTouchFlowBottomFar
+} HaogeTouchFlowBottomBand;
+
+typedef struct {
+    HaogeTouchFlowBottomBand band;
+    double x, y, since;
+} HaogeTouchFlowBottomHold;
+
+// Sample on movement and once on release. Crossing a band boundary or moving
+// more than 8 pt from the hold anchor restarts the dwell. No timer can fire early.
+static inline HaogeTouchFlowBottomBand haoge_touchflow_bottomSample(HaogeTouchFlowBottomHold *hold,
+        double dx, double dy, double now, int released) {
+    HaogeTouchFlowBottomBand band = haoge_touchflow_upward(dx,dy,200) ? HaogeTouchFlowBottomFar :
+        (haoge_touchflow_upward(dx,dy,120) ? HaogeTouchFlowBottomNear : HaogeTouchFlowBottomNone);
+    if (!isfinite(now) || band == HaogeTouchFlowBottomNone) {
+        hold->band = HaogeTouchFlowBottomNone;
+        return HaogeTouchFlowBottomNone;
+    }
+    double x = dx - hold->x, y = dy - hold->y;
+    if (band != hold->band || x*x+y*y > 64 || now < hold->since) {
+        hold->band = band; hold->x = dx; hold->y = dy; hold->since = now;
+    }
+    return released && now >= hold->since + 0.18 ? band : HaogeTouchFlowBottomNone;
+}
 static inline int haoge_touchflow_horizontal(double dx, double dy, double distance) {
     return isfinite(dx) && isfinite(dy) && isfinite(distance) && distance > 0 &&
            fabs(dx) >= distance && fabs(dx) > fabs(dy) * 1.3;

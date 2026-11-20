@@ -3,9 +3,14 @@
 #import "../Sources/HaogeTouchFlowActions.h"
 int main(void) {
  @autoreleasepool {
-  NSCAssert(haoge_touchflow_triggerIDs().count==13,@"13 triggers");
-  NSCAssert(haoge_touchflow_triggerTitles().count==13,@"13 titles");
-  NSCAssert([NSSet setWithArray:haoge_touchflow_triggerIDs()].count==13,@"unique trigger identities");
+  NSCAssert(haoge_touchflow_triggerIDs().count==15,@"15 triggers");
+  NSCAssert(haoge_touchflow_triggerTitles().count==haoge_touchflow_triggerIDs().count,@"every trigger has a title");
+  NSCAssert([NSSet setWithArray:haoge_touchflow_triggerIDs()].count==15,@"unique trigger identities");
+  NSCAssert([haoge_touchflow_triggerIDs() containsObject:@"bottomLeftFar"],@"left far binding survives config reload");
+  NSCAssert([haoge_touchflow_triggerIDs() containsObject:@"bottomRightFar"],@"right far binding survives config reload");
+  NSDictionary *farOnly=@{ @"bindings":@{ @"bottomRightFar":@{ @"enabled":@YES,@"action":@"screenshot" } } };
+  NSCAssert(haoge_touchflow_bindingEnabled(haoge_touchflow_binding(farOnly,@"bottomRightFar")),@"far action has an independent binding");
+  NSCAssert(!haoge_touchflow_bindingEnabled(haoge_touchflow_binding(farOnly,@"bottomRight")),@"far action does not enable the near binding");
   NSCAssert(!haoge_touchflow_bindingEnabled(@{}),@"missing binding stays inactive");
   NSCAssert(!haoge_touchflow_bindingEnabled(@{@"enabled":@YES,@"action":@"none"}),@"none never reserves gestures");
   NSCAssert(!haoge_touchflow_bindingEnabled(@{@"enabled":@"YES",@"action":@"lock"}),@"non-number enable rejected");

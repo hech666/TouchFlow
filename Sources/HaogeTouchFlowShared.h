@@ -8,13 +8,13 @@ static inline NSArray<NSString *> *haoge_touchflow_triggerIDs(void) {
     return @[@"statusLeftTap", @"statusLeftDoubleTap", @"statusLeftLongPress",
              @"statusLeftSwipeLeft", @"statusLeftSwipeRight", @"statusRightTap",
              @"statusRightDoubleTap", @"statusRightLongPress", @"statusRightSwipeLeft",
-             @"statusRightSwipeRight", @"bottomLeft", @"bottomRight", @"desktopLongPress"];
+             @"statusRightSwipeRight", @"bottomLeft", @"bottomLeftFar", @"bottomRight", @"bottomRightFar", @"desktopLongPress"];
 }
 static inline NSArray<NSString *> *haoge_touchflow_triggerTitles(void) {
     return @[@"状态栏左侧单击", @"状态栏左侧双击", @"状态栏左侧长按",
              @"状态栏左侧左滑", @"状态栏左侧右滑", @"状态栏右侧单击",
              @"状态栏右侧双击", @"状态栏右侧长按", @"状态栏右侧左滑",
-             @"状态栏右侧右滑", @"底部左侧上滑", @"底部右侧上滑", @"桌面空白处长按"];
+             @"状态栏右侧右滑", @"底部左侧上滑", @"左侧上滑 · 第二档", @"底部右侧上滑", @"右侧上滑 · 第二档", @"桌面空白处长按"];
 }
 // Dictionary schema: bindings[triggerID] = { enabled: BOOL, action: NSString, value: NSString }.
 // Global keys: enabled=NO, haptics=YES, allowLocked=NO, bottomDistance=110,

@@ -8,6 +8,22 @@
 #import "HaogeTouchFlowGeometry.h"
 #import <objc/message.h>
 #import <objc/runtime.h>
+#import <QuartzCore/QuartzCore.h>
+
+@interface HaogeTouchFlowBottomSession : NSObject {
+@public
+    HaogeTouchFlowBottomHold haoge_touchflow_hold;
+}
+@property (nonatomic, copy) NSString *haoge_touchflow_trigger;
+@property (nonatomic, copy) NSString *haoge_touchflow_farTrigger;
+@property (nonatomic, strong) NSDictionary *haoge_touchflow_snapshot;
+@property (nonatomic, weak) UIView *haoge_touchflow_view;
+@property (nonatomic, assign) BOOL haoge_touchflow_fired;
+@property (nonatomic, assign) BOOL haoge_touchflow_nearEnabled;
+@property (nonatomic, assign) BOOL haoge_touchflow_invalidated;
+@end
+@implementation HaogeTouchFlowBottomSession
+@end
 
 static char haoge_touchflow_windowKey, haoge_touchflow_desktopKey, haoge_touchflow_bottomSessionKey;
 static id haoge_touchflow_object(id target, NSString *name) {
@@ -169,14 +185,30 @@ static BOOL haoge_touchflow_locked(void) {
         [self haoge_touchflow_number:@"sidePercent" fallback:25 min:10 max:33]);
     return side < 0 ? @"statusLeft" : (side > 0 ? @"statusRight" : nil);
 }
-- (NSString *)haoge_touchflow_bottomTriggerForPoint:(CGPoint)point view:(UIView *)view {
-    if (!view || ![self haoge_touchflow_allowed] || ![self haoge_touchflow_portrait:view]) return nil;
+- (NSString *)haoge_touchflow_bottomSideForPoint:(CGPoint)point view:(UIView *)view {
+    if (!view || ![self haoge_touchflow_allowed] || ![self haoge_touchflow_portrait:view] || !isfinite(point.y)) return nil;
     double height = fmax(54,view.safeAreaInsets.bottom+20);
     if (point.y < CGRectGetMaxY(view.bounds)-height || point.y > CGRectGetMaxY(view.bounds)+1) return nil;
     int side = haoge_touchflow_side(point.x-CGRectGetMinX(view.bounds),CGRectGetWidth(view.bounds),
         [self haoge_touchflow_number:@"sidePercent" fallback:25 min:10 max:33]);
-    NSString *trigger = side < 0 ? @"bottomLeft" : (side > 0 ? @"bottomRight" : nil);
+    return side < 0 ? @"bottomLeft" : (side > 0 ? @"bottomRight" : nil);
+}
+- (NSString *)haoge_touchflow_bottomTriggerForPoint:(CGPoint)point view:(UIView *)view {
+    NSString *trigger = [self haoge_touchflow_bottomSideForPoint:point view:view];
     return [self haoge_touchflow_enabledTrigger:trigger] ? trigger : nil;
+}
+static BOOL haoge_touchflow_holdBindingReady(NSDictionary *binding) {
+    if (!haoge_touchflow_bindingEnabled(binding)) return NO;
+    if (haoge_touchflow_hasPanelMode(binding)) return YES;
+    for (NSDictionary *entry in haoge_touchflow_actionCatalog()) {
+        if (![entry[@"identifier"] isEqual:binding[@"action"]]) continue;
+        if (![entry[@"needsValue"] boolValue]) return YES;
+        id value = binding[@"value"];
+        if (![value isKindOfClass:[NSString class]]) return NO;
+        NSUInteger length = [[value stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet] length];
+        return length > 0 && length <= 4096;
+    }
+    return NO;
 }
 - (void)haoge_touchflow_fire:(NSString *)trigger view:(UIView *)view {
     NSAssert(NSThread.isMainThread,@"TouchFlow gestures run on main");
@@ -334,31 +366,71 @@ static BOOL haoge_touchflow_locked(void) {
         NSInteger mode = ((NSInteger (*)(id,SEL))objc_msgSend)(manager,modeSelector);
         if (mode != 1 && mode != 3) return NO;
     }
-    CGPoint location = [gesture locationInView:gesture.view];
-    CGPoint translation = [(UIPanGestureRecognizer *)gesture translationInView:gesture.view];
+    UIView *view = gesture.view;
+    CGPoint location = [gesture locationInView:view];
+    CGPoint translation = [(UIPanGestureRecognizer *)gesture translationInView:view];
     CGPoint start = CGPointMake(location.x-translation.x,location.y-translation.y);
-    NSString *trigger = [self haoge_touchflow_bottomTriggerForPoint:start view:gesture.view];
+    NSDictionary *snapshot = [self haoge_touchflow_snapshot];
+    NSString *trigger = [self haoge_touchflow_bottomSideForPoint:start view:view];
     if (!trigger) return NO;
-    objc_setAssociatedObject(gesture,&haoge_touchflow_bottomSessionKey,
-        [@{@"trigger":trigger,@"fired":@NO} mutableCopy],OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    NSString *far = [trigger isEqualToString:@"bottomLeft"] ? @"bottomLeftFar" : @"bottomRightFar";
+    BOOL dual = haoge_touchflow_holdBindingReady(haoge_touchflow_binding(snapshot,far));
+    BOOL near = dual ? haoge_touchflow_holdBindingReady(haoge_touchflow_binding(snapshot,trigger))
+                     : [self haoge_touchflow_enabledTrigger:trigger];
+    if ((!near && !dual) || [self haoge_touchflow_snapshot] != snapshot) return NO;
+    HaogeTouchFlowBottomSession *session = [HaogeTouchFlowBottomSession new];
+    session.haoge_touchflow_trigger = trigger;
+    session.haoge_touchflow_farTrigger = dual ? far : nil;
+    session.haoge_touchflow_nearEnabled = near;
+    session.haoge_touchflow_snapshot = dual ? snapshot : nil;
+    session.haoge_touchflow_view = view;
+    objc_setAssociatedObject(gesture,&haoge_touchflow_bottomSessionKey,session,OBJC_ASSOCIATION_RETAIN_NONATOMIC);
     [self.haoge_touchflow_claimedRecognizers addObject:gesture];
     return YES;
 }
 - (BOOL)haoge_touchflow_updateClaimedBottom:(UIGestureRecognizer *)gesture ended:(BOOL)ended cancelled:(BOOL)cancelled {
-    NSMutableDictionary *session = objc_getAssociatedObject(gesture,&haoge_touchflow_bottomSessionKey);
+    HaogeTouchFlowBottomSession *session = objc_getAssociatedObject(gesture,&haoge_touchflow_bottomSessionKey);
     if (!session) return NO;
-    // Do not resume system updates half-way through a sequence for which began was suppressed.
-    if (!cancelled && ![session[@"fired"] boolValue] && [self haoge_touchflow_enabledTrigger:session[@"trigger"]]) {
-        CGPoint translation = [(UIPanGestureRecognizer *)gesture translationInView:gesture.view];
-        if (haoge_touchflow_upward(translation.x,translation.y,
-                [self haoge_touchflow_number:@"bottomDistance" fallback:110 min:60 max:200])) {
-            session[@"fired"] = @YES;
-            [self haoge_touchflow_fire:session[@"trigger"] view:gesture.view];
-        }
-    }
+    // Our began was consumed: always consume its matching terminal callback,
+    // even if preferences or in-flight eligibility changed.
     if (ended || cancelled) {
         objc_setAssociatedObject(gesture,&haoge_touchflow_bottomSessionKey,nil,OBJC_ASSOCIATION_RETAIN_NONATOMIC);
         [self.haoge_touchflow_claimedRecognizers removeObject:gesture];
+    }
+    if (cancelled) return YES;
+    UIView *view = gesture.view;
+    if (session.haoge_touchflow_farTrigger) {
+        NSDictionary *snapshot = session.haoge_touchflow_snapshot;
+        if (session.haoge_touchflow_invalidated || !view || view != session.haoge_touchflow_view ||
+            [self haoge_touchflow_snapshot] != snapshot || haoge_touchflow_locked() ||
+            ![self haoge_touchflow_portrait:view] || [[HaogeTouchFlowPanel haoge_touchflow_shared] haoge_touchflow_isVisible]) {
+            session.haoge_touchflow_invalidated = YES;
+            return YES;
+        }
+        CGPoint translation = [(UIPanGestureRecognizer *)gesture translationInView:view];
+        HaogeTouchFlowBottomBand band = haoge_touchflow_bottomSample(&session->haoge_touchflow_hold,
+            translation.x,translation.y,CACurrentMediaTime(),ended);
+        NSString *trigger = band == HaogeTouchFlowBottomFar ? session.haoge_touchflow_farTrigger :
+            (band == HaogeTouchFlowBottomNear && session.haoge_touchflow_nearEnabled ? session.haoge_touchflow_trigger : nil);
+        if (trigger) {
+            __weak UIView *weakView = view;
+            dispatch_async(dispatch_get_main_queue(), ^{
+                UIView *currentView = weakView;
+                if (!currentView || [self haoge_touchflow_snapshot] != snapshot || haoge_touchflow_locked() ||
+                    [[HaogeTouchFlowPanel haoge_touchflow_shared] haoge_touchflow_isVisible]) return;
+                [self haoge_touchflow_fire:trigger view:currentView];
+            });
+        }
+        return YES;
+    }
+    NSString *trigger = session.haoge_touchflow_trigger;
+    if (!session.haoge_touchflow_fired && [self haoge_touchflow_enabledTrigger:trigger]) {
+        CGPoint translation = [(UIPanGestureRecognizer *)gesture translationInView:view];
+        if (haoge_touchflow_upward(translation.x,translation.y,
+                [self haoge_touchflow_number:@"bottomDistance" fallback:110 min:60 max:200])) {
+            session.haoge_touchflow_fired = YES;
+            [self haoge_touchflow_fire:trigger view:view];
+        }
     }
     return YES;
 }
