@@ -9,7 +9,7 @@ NSArray<NSDictionary *> *haoge_touchflow_actionCatalog(void) {
             @{@"identifier":@"respring",@"title":@"注销 SpringBoard",@"detail":@"重新载入桌面，不重启手机",@"needsValue":@NO},
             @{@"identifier":@"screenshot",@"title":@"系统截图",@"detail":@"使用系统截图入口",@"needsValue":@NO},
             @{@"identifier":@"screenRecording",@"title":@"开始／停止录屏",@"detail":@"再次执行停止系统录屏并保存到照片",@"needsValue":@NO},
-            @{@"identifier":@"kayokoClipboard",@"title":@"呼出 Kayoko 剪切板",@"detail":@"需要安装并启用 Kayoko",@"needsValue":@NO},
+            @{@"identifier":@"kayokoClipboard",@"title":@"kayoko剪切板",@"detail":@"需要安装并启用 Kayoko",@"needsValue":@NO},
             @{@"identifier":@"wechatPay",@"title":@"微信付款码",@"detail":@"打开微信付款码页面",@"needsValue":@NO,@"url":@"weixin://widget/pay"},
             @{@"identifier":@"alipayPay",@"title":@"支付宝付款码",@"detail":@"打开支付宝付款码页面",@"needsValue":@NO,@"url":@"alipay://platformapi/startapp?appId=20000056"},
             @{@"identifier":@"wechatScan",@"title":@"微信扫一扫",@"detail":@"打开微信扫码页面",@"needsValue":@NO,@"url":@"weixin://scanqrcode"},
