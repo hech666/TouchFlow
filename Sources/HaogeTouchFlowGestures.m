@@ -20,6 +20,8 @@
 @property (nonatomic, weak) UIView *haoge_touchflow_view;
 @property (nonatomic, assign) BOOL haoge_touchflow_fired;
 @property (nonatomic, assign) BOOL haoge_touchflow_nearEnabled;
+@property (nonatomic, assign) double haoge_touchflow_nearDistance;
+@property (nonatomic, assign) double haoge_touchflow_farDistance;
 @property (nonatomic, assign) BOOL haoge_touchflow_invalidated;
 @end
 @implementation HaogeTouchFlowBottomSession
@@ -377,13 +379,20 @@ static BOOL haoge_touchflow_holdBindingReady(NSDictionary *binding) {
     BOOL dual = haoge_touchflow_holdBindingReady(haoge_touchflow_binding(snapshot,far));
     BOOL near = dual ? haoge_touchflow_holdBindingReady(haoge_touchflow_binding(snapshot,trigger))
                      : [self haoge_touchflow_enabledTrigger:trigger];
-    if ((!near && !dual) || [self haoge_touchflow_snapshot] != snapshot) return NO;
+    if (!near && !dual) return NO;
     HaogeTouchFlowBottomSession *session = [HaogeTouchFlowBottomSession new];
     session.haoge_touchflow_trigger = trigger;
     session.haoge_touchflow_farTrigger = dual ? far : nil;
     session.haoge_touchflow_nearEnabled = near;
     session.haoge_touchflow_snapshot = dual ? snapshot : nil;
     session.haoge_touchflow_view = view;
+    if (dual) {
+        session.haoge_touchflow_nearDistance = [self haoge_touchflow_number:@"bottomDistance"
+            fallback:HaogeTouchFlowBottomNearDefault min:HaogeTouchFlowBottomNearMin max:HaogeTouchFlowBottomNearMax];
+        session.haoge_touchflow_farDistance = [self haoge_touchflow_number:@"bottomFarDistance"
+            fallback:HaogeTouchFlowBottomFarDefault min:HaogeTouchFlowBottomFarMin max:HaogeTouchFlowBottomFarMax];
+    }
+    if ([self haoge_touchflow_snapshot] != snapshot) return NO;
     objc_setAssociatedObject(gesture,&haoge_touchflow_bottomSessionKey,session,OBJC_ASSOCIATION_RETAIN_NONATOMIC);
     [self.haoge_touchflow_claimedRecognizers addObject:gesture];
     return YES;
@@ -409,7 +418,8 @@ static BOOL haoge_touchflow_holdBindingReady(NSDictionary *binding) {
         }
         CGPoint translation = [(UIPanGestureRecognizer *)gesture translationInView:view];
         HaogeTouchFlowBottomBand band = haoge_touchflow_bottomSample(&session->haoge_touchflow_hold,
-            translation.x,translation.y,CACurrentMediaTime(),ended);
+            translation.x,translation.y,session.haoge_touchflow_nearDistance,session.haoge_touchflow_farDistance,
+            CACurrentMediaTime(),ended);
         NSString *trigger = band == HaogeTouchFlowBottomFar ? session.haoge_touchflow_farTrigger :
             (band == HaogeTouchFlowBottomNear && session.haoge_touchflow_nearEnabled ? session.haoge_touchflow_trigger : nil);
         if (trigger) {

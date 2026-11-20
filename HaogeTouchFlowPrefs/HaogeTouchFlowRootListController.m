@@ -18,7 +18,7 @@
 }
 - (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView { (void)tableView; return 7; }
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
-    (void)tableView; const NSInteger counts[]={1,5,5,(NSInteger)haoge_touchflow_triggerIDs().count-10,2,4,1}; return counts[section];
+    (void)tableView; const NSInteger counts[]={1,5,5,(NSInteger)haoge_touchflow_triggerIDs().count-10,2,5,1}; return counts[section];
 }
 - (NSString *)tableView:(UITableView *)tableView titleForHeaderInSection:(NSInteger)section {
     (void)tableView; return @[@"轻触手势 · 快捷面板版",@"状态栏左侧",@"状态栏右侧",@"底部与桌面",@"行为",@"灵敏度",@"快捷面板"][(NSUInteger)section];
@@ -26,13 +26,14 @@
 - (NSString *)tableView:(UITableView *)tableView titleForFooterInSection:(NSInteger)section {
     (void)tableView;
     if (section==0) return @"安装后默认关闭。先停用其他同区域手势插件，再开启本插件。";
-    if (section==3) return @"启用某侧第二档后，解锁竖屏时该侧上滑 120–199 pt 或至少 200 pt，停约 0.18 秒后松手执行对应动作。未启用第二档时沿用原距离。底部中间保留系统手势。桌面长按只识别空白区域。";
+    if (section==3) return @"启用某侧第二档后，解锁竖屏时上滑到对应距离，停约 0.18 秒再松手，只执行一档，达到第二档距离时优先执行第二档。未启用第二档时维持原触发方式。底部中间保留系统手势；桌面长按只识别空白区域。";
     if (section==4) return @"默认不在锁屏执行动作。开启后系统仍要求解锁受保护内容。设置保存后自动生效。";
     if (section==5) return @"可调整触发区域和距离。首次安装后需由包管理器重新载入 SpringBoard；以后改设置不用注销。";
     return nil;
 }
 - (NSDictionary *)haoge_touchflow_numeric:(NSInteger)row {
-    return @[@{@"key":@"bottomDistance",@"title":@"底部上滑距离",@"default":@110,@"min":@60,@"max":@200,@"suffix":@" pt"},
+    return @[@{@"key":@"bottomDistance",@"title":@"底部上滑 · 第一档距离",@"default":@(HaogeTouchFlowBottomNearDefault),@"min":@(HaogeTouchFlowBottomNearMin),@"max":@(HaogeTouchFlowBottomNearMax),@"suffix":@" pt"},
+             @{@"key":@"bottomFarDistance",@"title":@"底部上滑 · 第二档距离",@"default":@(HaogeTouchFlowBottomFarDefault),@"min":@(HaogeTouchFlowBottomFarMin),@"max":@(HaogeTouchFlowBottomFarMax),@"suffix":@" pt"},
              @{@"key":@"statusDistance",@"title":@"状态栏横滑距离",@"default":@60,@"min":@30,@"max":@140,@"suffix":@" pt"},
              @{@"key":@"sidePercent",@"title":@"左右各侧区域宽度",@"default":@25,@"min":@10,@"max":@33,@"suffix":@"%"},
              @{@"key":@"longPressDuration",@"title":@"长按触发时间",@"default":@0.55,@"min":@0.35,@"max":@1.2,@"suffix":@" 秒"}][(NSUInteger)row];
