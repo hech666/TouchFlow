@@ -40,6 +40,15 @@ static inline int haoge_touchflow_horizontal(double dx, double dy, double distan
     return isfinite(dx) && isfinite(dy) && isfinite(distance) && distance > 0 &&
            fabs(dx) >= distance && fabs(dx) > fabs(dy) * 1.3;
 }
+static inline double haoge_touchflow_hapticIntensityForLevel(int level) {
+    switch (level) {
+        case 0: return 0.0;
+        case 1: return 0.35;
+        case 2: return 0.65;
+        case 3: return 1.0;
+        default: return 0.65;
+    }
+}
 static inline double haoge_touchflow_finiteClamp(double value, double fallback, double lo, double hi) {
     return isfinite(value) ? fmax(lo, fmin(value, hi)) : fallback;
 }

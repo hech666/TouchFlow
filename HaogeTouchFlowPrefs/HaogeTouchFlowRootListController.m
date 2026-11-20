@@ -27,7 +27,7 @@
     (void)tableView;
     if (section==0) return @"安装后默认关闭。先停用其他同区域手势插件，再开启本插件。";
     if (section==3) return @"启用某侧第二档后，解锁竖屏时滑到对应距离就轻振，松手执行当前档位，无需停留。继续滑到第二档会再轻振一次。未启用第二档时维持原触发方式。底部中间保留系统手势；桌面长按只识别空白区域。";
-    if (section==4) return @"默认不在锁屏执行动作。开启后系统仍要求解锁受保护内容。设置保存后自动生效。";
+    if (section==4) return @"震动大小可选：关闭、弱、中、强。设置保存后自动生效；锁屏执行设置保持不变。";
     if (section==5) return @"可调整触发区域和距离。首次安装后需由包管理器重新载入 SpringBoard；以后改设置不用注销。";
     return nil;
 }
@@ -38,16 +38,38 @@
              @{@"key":@"sidePercent",@"title":@"左右各侧区域宽度",@"default":@25,@"min":@10,@"max":@33,@"suffix":@"%"},
              @{@"key":@"longPressDuration",@"title":@"长按触发时间",@"default":@0.55,@"min":@0.35,@"max":@1.2,@"suffix":@" 秒"}][(NSUInteger)row];
 }
+- (NSInteger)haoge_touchflow_hapticLevel {
+    id value=self.haoge_touchflow_values[@"hapticLevel"];
+    if ([value isKindOfClass:[NSNumber class]]) return MAX(0,MIN(3,[value integerValue]));
+    id percentage=self.haoge_touchflow_values[@"hapticIntensity"];
+    if ([percentage isKindOfClass:[NSNumber class]]) {
+        double p=[percentage doubleValue]; return p<=0?0:(p<50?1:(p<85?2:3));
+    }
+    id legacy=self.haoge_touchflow_values[@"haptics"];
+    return ([legacy isKindOfClass:[NSNumber class]] && ![legacy boolValue])?0:2;
+}
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)path {
     (void)tableView; UITableViewCell *cell=[[UITableViewCell alloc] initWithStyle:UITableViewCellStyleValue1 reuseIdentifier:nil];
     if (path.section==6) {
         cell.textLabel.text=@"面板外观与动画";cell.accessoryType=UITableViewCellAccessoryDisclosureIndicator;return cell;
     }
-    if (path.section==0 || path.section==4) {
-        NSString *key=path.section==0?@"enabled":(path.row==0?@"haptics":@"allowLocked");
-        cell.textLabel.text=path.section==0?@"启用轻触手势":(path.row==0?@"手势轻振提示":@"允许锁屏时执行");
-        UISwitch *toggle=[UISwitch new]; toggle.accessibilityIdentifier=key;
-        id value=self.haoge_touchflow_values[key]; toggle.on=[value isKindOfClass:[NSNumber class]]?[value boolValue]:[key isEqual:@"haptics"];
+    if (path.section==0) {
+        cell.textLabel.text=@"启用轻触手势";
+        UISwitch *toggle=[UISwitch new]; toggle.accessibilityIdentifier=@"enabled";
+        id value=self.haoge_touchflow_values[@"enabled"]; toggle.on=[value isKindOfClass:[NSNumber class]]?[value boolValue]:NO;
+        [toggle addTarget:self action:@selector(haoge_touchflow_toggled:) forControlEvents:UIControlEventValueChanged];
+        cell.accessoryView=toggle; cell.selectionStyle=UITableViewCellSelectionStyleNone;
+    } else if (path.section==4 && path.row==0) {
+        cell.textLabel.text=@"震动大小调节";
+        UISegmentedControl *levels=[[UISegmentedControl alloc] initWithItems:@[@"关闭",@"弱",@"中",@"强"]];
+        levels.frame=CGRectMake(0,0,230,32); levels.selectedSegmentIndex=[self haoge_touchflow_hapticLevel];
+        levels.accessibilityLabel=@"震动大小调节"; levels.accessibilityIdentifier=@"hapticLevel";
+        [levels addTarget:self action:@selector(haoge_touchflow_hapticLevelChanged:) forControlEvents:UIControlEventValueChanged];
+        cell.accessoryView=levels; cell.selectionStyle=UITableViewCellSelectionStyleNone;
+    } else if (path.section==4) {
+        cell.textLabel.text=@"允许锁屏时执行";
+        UISwitch *toggle=[UISwitch new]; toggle.accessibilityIdentifier=@"allowLocked";
+        id value=self.haoge_touchflow_values[@"allowLocked"]; toggle.on=[value isKindOfClass:[NSNumber class]]?[value boolValue]:NO;
         [toggle addTarget:self action:@selector(haoge_touchflow_toggled:) forControlEvents:UIControlEventValueChanged];
         cell.accessoryView=toggle; cell.selectionStyle=UITableViewCellSelectionStyleNone;
     } else if (path.section==5) {
@@ -72,6 +94,9 @@
     self.haoge_touchflow_values=haoge_touchflow_readPreferences(); [self.tableView reloadData];
 }
 - (void)haoge_touchflow_toggled:(UISwitch *)toggle { [self haoge_touchflow_save:toggle.accessibilityIdentifier value:@(toggle.on)]; }
+- (void)haoge_touchflow_hapticLevelChanged:(UISegmentedControl *)control {
+    [self haoge_touchflow_save:@"hapticLevel" value:@(control.selectedSegmentIndex)];
+}
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)path {
     [tableView deselectRowAtIndexPath:path animated:YES];
     if (path.section==6) {

@@ -212,9 +212,20 @@ static BOOL haoge_touchflow_holdBindingReady(NSDictionary *binding) {
     }
     return NO;
 }
-static BOOL haoge_touchflow_hapticsEnabled(NSDictionary *snapshot) {
-    id haptics = snapshot[@"haptics"];
-    return !haptics || ([haptics isKindOfClass:[NSNumber class]] && [haptics boolValue]);
+static CGFloat haoge_touchflow_hapticIntensity(NSDictionary *snapshot) {
+    id level = snapshot[@"hapticLevel"];
+    if ([level isKindOfClass:[NSNumber class]]) {
+        NSInteger value = MAX(0,MIN(3,[level integerValue]));
+        return (CGFloat)haoge_touchflow_hapticIntensityForLevel((int)value);
+    }
+    // Accept the short-lived percentage key and preserve older on/off installs.
+    id percentage = snapshot[@"hapticIntensity"];
+    if ([percentage isKindOfClass:[NSNumber class]]) {
+        return (CGFloat)MAX(0.0,MIN(1.0,[percentage doubleValue] / 100.0));
+    }
+    id legacy = snapshot[@"haptics"];
+    return ([legacy isKindOfClass:[NSNumber class]] && ![legacy boolValue]) ? 0.0 :
+        (CGFloat)haoge_touchflow_hapticIntensityForLevel(2);
 }
 - (void)haoge_touchflow_fire:(NSString *)trigger view:(UIView *)view {
     [self haoge_touchflow_fire:trigger view:view withFeedback:YES];
@@ -225,7 +236,10 @@ static BOOL haoge_touchflow_hapticsEnabled(NSDictionary *snapshot) {
     NSDictionary *snapshot = [self haoge_touchflow_snapshot];
     NSDictionary *binding = haoge_touchflow_binding(snapshot,trigger);
     if (haoge_touchflow_hasPanelMode(binding) && haoge_touchflow_locked()) return;
-    if (feedback && haoge_touchflow_hapticsEnabled(snapshot)) [self.haoge_touchflow_feedback impactOccurred];
+    if (feedback) {
+        CGFloat intensity = haoge_touchflow_hapticIntensity(snapshot);
+        if (intensity > 0.0) [self.haoge_touchflow_feedback impactOccurredWithIntensity:intensity];
+    }
     if (haoge_touchflow_hasPanelMode(binding)) {
         __weak UIWindow *sourceWindow = view.window;
         dispatch_async(dispatch_get_main_queue(), ^{
@@ -431,7 +445,10 @@ static BOOL haoge_touchflow_hapticsEnabled(NSDictionary *snapshot) {
         if (!ended) {
             BOOL entered = haoge_touchflow_bottomEnterBand(&session->haoge_touchflow_band,
                 trigger ? band : HaogeTouchFlowBottomNone);
-            if (entered && haoge_touchflow_hapticsEnabled(snapshot)) [self.haoge_touchflow_feedback impactOccurred];
+            if (entered) {
+                CGFloat intensity = haoge_touchflow_hapticIntensity(snapshot);
+                if (intensity > 0.0) [self.haoge_touchflow_feedback impactOccurredWithIntensity:intensity];
+            }
             return YES;
         }
         if (trigger) {

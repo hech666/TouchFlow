@@ -55,6 +55,11 @@ int main(void) {
     assert(!haoge_touchflow_bottomEnterBand(&previous,HaogeTouchFlowBottomNone));
     assert(previous==HaogeTouchFlowBottomNone);
     assert(haoge_touchflow_bottomEnterBand(&previous,HaogeTouchFlowBottomFar));
-    printf("PASS geometry, two-stage threshold and haptic transition checks\n");
+    assert(haoge_touchflow_hapticIntensityForLevel(0)==0.0);
+    assert(haoge_touchflow_hapticIntensityForLevel(1)==0.35);
+    assert(haoge_touchflow_hapticIntensityForLevel(2)==0.65);
+    assert(haoge_touchflow_hapticIntensityForLevel(3)==1.0);
+    assert(haoge_touchflow_hapticIntensityForLevel(99)==0.65);
+    printf("PASS geometry, two-stage thresholds, cue transitions and four haptic levels\n");
     return 0;
 }
