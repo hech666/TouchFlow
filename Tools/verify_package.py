@@ -1,13 +1,21 @@
 import sys,io,tarfile,subprocess,struct,hashlib,plistlib,json
 from pathlib import Path
 
+MACHO_MAGICS = {bytes.fromhex(h) for h in (
+ 'cffaedfe','feedfacf','cefaedfe','feedface',
+ 'cafebabe','bebafeca','cafebabf','bfbafeca')}
+
+def require_arm64e_header(data):
+ assert len(data)>=32,'truncated Mach-O header'
+ magic,cpu,sub=struct.unpack_from('<III',data)
+ assert magic==0xfeedfacf,'require thin little-endian Mach-O 64 (not FAT)'
+ assert cpu==0x0100000c,('require ARM64 CPU',hex(cpu))
+ assert sub==0x80000002,('require modern arm64e subtype',hex(sub))
+ return sub
+
 def macho(data):
- magic=struct.unpack_from('>I',data)[0]
- if magic==0xcafebabe:
-  n=struct.unpack_from('>I',data,4)[0];slices=[]
-  for i in range(n):
-   cpu,sub,off,size,align=struct.unpack_from('>5I',data,8+i*20);slices.append((sub,data[off:off+size]))
- else:slices=[(struct.unpack_from('<I',data,8)[0],data)]
+ sub=require_arm64e_header(data)
+ slices=[(sub,data)]
  result=[]
  for sub,b in slices:
   assert struct.unpack_from('<I',b,0)[0]==0xfeedfacf
@@ -37,14 +45,15 @@ def macho(data):
   assert any('libroothide.dylib' in d for d in deps),deps
   assert not any('libroot.dylib' in d and 'libroothide' not in d for d in deps)
   result.append(dict(subtype=sub,signature_pages=pages,minos=minos,sdk=sdk,dependencies=deps))
- assert {x['subtype']&0xffffff for x in result}=={0,2},result
+ assert len(result)==1 and result[0]['subtype']==0x80000002,result
  return result
 
-for argument in sys.argv[1:]:
- path=Path(argument)
- if path.suffix!='.deb':continue
+def verify_package(path):
+ path=Path(path)
+ assert path.suffix=='.deb',path
  control=subprocess.check_output(['dpkg-deb','-f',str(path)]).decode();assert 'Package: com.haoge.touchflow' in control
  assert 'Architecture: iphoneos-arm64e' in control
+ assert any(line.startswith('Description:') and '64e单架构' in line for line in control.splitlines()),'single-architecture label missing'
  assert 'firmware (>= 16.0)' in control and 'libroot (' not in control
  payload=subprocess.check_output(['dpkg-deb','--fsys-tarfile',str(path)])
  with tarfile.open(fileobj=io.BytesIO(payload)) as t:
@@ -52,10 +61,19 @@ for argument in sys.argv[1:]:
  assert not any(n.startswith('var/jb/') for n in members)
  prefix='Library/MobileSubstrate/DynamicLibraries/HaogeTouchFlow'
  filt=plistlib.loads(members[prefix+'.plist']);assert filt=={'Filter':{'Bundles':['com.apple.springboard']}}
+ prefs_path='Library/PreferenceBundles/HaogeTouchFlowPrefs.bundle/HaogeTouchFlowPrefs'
+ detected={n for n,b in members.items() if b[:4] in MACHO_MAGICS}
+ assert detected=={prefix+'.dylib',prefs_path},('unexpected Mach-O payload',detected)
+ for name in detected:require_arm64e_header(members[name])
  main=macho(members[prefix+'.dylib'])
- prefs=macho(members['Library/PreferenceBundles/HaogeTouchFlowPrefs.bundle/HaogeTouchFlowPrefs'])
+ prefs=macho(members[prefs_path])
  assert 'Library/PreferenceLoader/Preferences/HaogeTouchFlowPrefs.plist' in members
  for name,data in members.items():
   if name.endswith('.plist'):plistlib.loads(data)
- report=dict(package=path.name,sha256=hashlib.sha256(path.read_bytes()).hexdigest(),main=main,prefs=prefs,files=len(members),runtime_tested=False)
+ report=dict(package=path.name,sha256=hashlib.sha256(path.read_bytes()).hexdigest(),main=main,prefs=prefs,files=len(members),architecture='arm64e',binary_format='thin',mach_o_paths=sorted(detected),runtime_tested=False)
  path.with_suffix('.verification.json').write_text(json.dumps(report,indent=2));print(json.dumps(report,indent=2))
+ return report
+
+if __name__=='__main__':
+ for argument in sys.argv[1:]:
+  if Path(argument).suffix=='.deb':verify_package(argument)

@@ -56,8 +56,8 @@ sh build.sh roothide
 python3 Tools/verify_package.py packages/*.deb
 ```
 
-编译主插件和设置面板的真实 arm64、arm64e 两个 slice，部署目标 16.0。CI 版本 `5.2.0-<run_number>`。
+当前构建为 **64e单架构**：主插件和设置面板均只包含现代 `arm64e`（CPU subtype `0x80000002`）单一 Mach-O，不包含 `arm64` slice，部署目标 16.0。包详情也标注“64e单架构”。CI 版本 `5.2.0-<run_number>`，功能沿用 5.2.0-38，手势和震动源码不变。
 
-已覆盖 25 项几何边界／方向／NaN 检查；成品检查涵盖架构、依赖、部署目标、过滤器、资源和两套代码签名页。源码 manifest 记录实际构建提交和逐文件 SHA-256。
+已覆盖几何边界、双档上滑和震动迁移检查；新增架构测试拒绝 FAT、多架构、普通 arm64 和旧版 arm64e subtype。成品全包扫描涵盖两份 Mach-O 的精确架构、依赖、部署目标、过滤器、资源和代码签名页。源码 manifest 记录实际构建提交和逐文件 SHA-256。
 
 这些检查不能代替真机手势验收。未在目标 SpringBoard 上安装测试首版，UI、私有接口实际行为以及与其他手势插件的冲突仍待设备确认。原 OneStepX iOS16 测试包可用的反馈不等于本新插件已实测。

@@ -28,6 +28,8 @@ jobs:
           git clone --depth 1 --filter=blob:none --sparse https://github.com/theos/sdks.git "$RUNNER_TEMP/theos-sdks"
           git -C "$RUNNER_TEMP/theos-sdks" sparse-checkout set iPhoneOS16.5.sdk
           cp -a "$RUNNER_TEMP/theos-sdks/iPhoneOS16.5.sdk" "$THEOS/sdks/"
+      - name: Architecture gate checks
+        run: python3 Tests/architecture.py
       - name: Geometry checks
         run: |
           clang -std=c11 -Wall -Wextra -Werror Tests/geometry.c -o "$RUNNER_TEMP/geometry"
