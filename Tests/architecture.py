@@ -2,9 +2,11 @@
 import importlib.util
 import re
 import struct
+import sys
 import unittest
 from pathlib import Path
 
+sys.dont_write_bytecode = True
 ROOT = Path(__file__).resolve().parents[1]
 spec = importlib.util.spec_from_file_location('touchflow_verify', ROOT/'Tools/verify_package.py')
 verifier = importlib.util.module_from_spec(spec)
